@@ -1,0 +1,7 @@
+node_modules
+rethinkdb_data
+src
+example
+.idea
+coverage
+.nyc_output

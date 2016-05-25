@@ -1,0 +1,6 @@
+node_modules/
+rethinkdb_data/
+.idea
+coverage
+.nyc_output
+lib/
