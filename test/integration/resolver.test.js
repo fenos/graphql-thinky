@@ -708,3 +708,34 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
     });
   });
 });
+
+test("it should handle empty results", async(t) => {
+
+  const UserModel = DB.models.User;
+  await UserModel.delete();
+
+  const UserResolver = new Node({
+    model: UserModel
+  });
+
+  const userType = Graph.userType();
+
+  const schema = Graph.createSchema({
+    users: {
+      type: new GraphQLList(userType),
+      resolve: resolver(UserResolver, {
+        thinky: DB.instance
+      })
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users {
+          name
+        }
+      }
+    `, null);
+  
+  expect(result.data.users).to.be.empty;
+})

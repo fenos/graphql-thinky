@@ -44,8 +44,17 @@ export default function generateTree(simpleAST, type, context) {
     // No point inncluding if no fields have been asked for
     if (!fieldAST) return;
 
-    const Node = includeResolver.$Node;
-    Node.name = name; // assign the name of the node, based to the AST
+    const resolverNode = includeResolver.$Node,
+          params = {};
+    
+    Object.keys(resolverNode).forEach((key) => {
+      params[key] = resolverNode[key];
+    });
+
+    // To Prevent further Circular
+    // reference i'll re-construct the object
+    // on the tree
+    const Node = new BaseNode(params);
 
     let includeOptions = argsToFindOptions(args, Node.getModel());
 
@@ -69,10 +78,11 @@ export default function generateTree(simpleAST, type, context) {
         });
       }
 
-      includeOptions.attributes.push(Related.leftKey);
 
-      if (Related.type === 'hasMany') {
+      if (Related.type === 'hasMany' || Related.type === 'belongsTo') {
         includeOptions.attributes.push(Related.rightKey);
+      } else {
+        includeOptions.attributes.push(Related.leftKey);
       }
 
       if (includeOptions.order) {
@@ -90,9 +100,7 @@ export default function generateTree(simpleAST, type, context) {
       const hasNestedNode = Object.keys(nestedNode).length > 0;
 
       if (hasNestedNode) {
-        Object.keys(nestedNode).forEach((node) => {
-          includeOptions.attributes = includeOptions.attributes.concat(nestedNode[node].args.attributes);
-        });
+
 
         includeOptions.attributes = _.uniq(includeOptions.attributes);
         Node.appendToTree(nestedNode);

@@ -4,3 +4,5 @@ rethinkdb_data/
 coverage
 .nyc_output
 lib/
+example/node_modules/
+example/rethinkdb_data/

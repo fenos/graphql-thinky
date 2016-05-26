@@ -7,7 +7,7 @@ import assert from 'assert';
  */
 class Node {
 
-  constructor({model, tree = {}, related = undefined, args = {}, connection = {}}) {
+  constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = ''}) {
 
     assert(model,'You need to provide a thinky Model');
 
@@ -16,7 +16,7 @@ class Node {
     this.tree = tree;
     this.args = args;
     this.connection = connection;
-    this.name = ''; // The name will be populated based to AST name
+    this.name = name; // The name will be populated based to AST name
   }
 
   async query() {

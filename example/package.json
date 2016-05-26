@@ -1,0 +1,26 @@
+{
+  "private": true,
+  "name": "graphql-thinky-example",
+  "version": "0.1.0",
+  "description": "Graphql thinky example",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.babel.js"
+  },
+  "author": "Fabrizio",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.15.1",
+    "express": "^4.13.4",
+    "express-graphql": "^0.5.1",
+    "graphql": "^0.5.0",
+    "graphql-relay": "^0.4.1",
+    "graphql-thinky": "^0.1.1",
+    "thinky": "^2.3.2"
+  },
+  "devDependencies": {
+    "babel-core": "^6.9.0",
+    "babel-polyfill": "^6.9.0",
+    "babel-register": "^6.9.0"
+  }
+}

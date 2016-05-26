@@ -126,8 +126,9 @@ class GraphqlThinky {
 
     connection = connection || {};
 
-    const models = this.thinky.models,
-        modelTarget = models[modelName];
+    const models = this.thinky.models;
+
+    let modelTarget = models[modelName];
 
     let relation;
 
@@ -144,6 +145,8 @@ class GraphqlThinky {
              but relation not found.`
         );
     }
+    
+    modelTarget = (related) ? relation.model : modelTarget;
 
     return new Node({
       model: modelTarget,
