@@ -55,6 +55,7 @@ export default function generateTree(simpleAST, type, context) {
     // reference i'll re-construct the object
     // on the tree
     const Node = new BaseNode(params);
+    Node.name = name;
 
     let includeOptions = argsToFindOptions(args, Node.getModel());
 
