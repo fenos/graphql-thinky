@@ -12,7 +12,7 @@ import {
  *
  * @param fields
  */
-function createSchema(fields) {
+function createSchema(fields,node) {
 
   return new GraphQLSchema({
     query: new GraphQLObjectType({
@@ -20,7 +20,8 @@ function createSchema(fields) {
       fields: {
           ...fields
       }
-    })
+    }),
+    node: node
   });
 }
 
@@ -29,7 +30,7 @@ function createSchema(fields) {
  *
  * @param fields
  */
-function userType(fields, name) {
+function userType(fields, name, nodeInterface) {
   return  new GraphQLObjectType({
     name: name || 'User',
     description: 'A user',
@@ -47,7 +48,8 @@ function userType(fields, name) {
         type: GraphQLString
       },
       ...fields
-    }
+    },
+    interfaces: () => nodeInterface || []
   });
 }
 
@@ -56,7 +58,7 @@ function userType(fields, name) {
  *
  * @param fields
  */
-export  function taskType(fields) {
+export  function taskType(fields,nodeInterface) {
   return  new GraphQLObjectType({
     name: 'Task',
     description: 'A Task',
@@ -81,7 +83,8 @@ export  function taskType(fields) {
         },
         ...fields
       }
-    }
+    },
+    interfaces: () => nodeInterface || []
   });
 }
 
@@ -90,7 +93,7 @@ export  function taskType(fields) {
  *
  * @param fields
  */
-export function tagType(fields) {
+export function tagType(fields, nodeInterface) {
 
   return  new GraphQLObjectType({
     name: 'Tag',
@@ -113,7 +116,8 @@ export function tagType(fields) {
         },
         ...fields
       }
-    }
+    },
+    interfaces: () => nodeInterface || []
   });
 }
 

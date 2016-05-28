@@ -3,6 +3,7 @@ import simplifyAST from './simplifyAST';
 import generateTree from './generateTree';
 import {argsToFindOptions} from './queryBuilder';
 import {isConnection,nodeAST,nodeType} from './relay';
+import _ from 'lodash';
 import {
     GraphQLList
 } from 'graphql';
@@ -35,7 +36,7 @@ export default function resolver(Node,opts = {}) {
    */
   const Resolver = async (source, args, context, info) => {
 
-    Node.name = info.fieldName;
+    Node.name = Node.name || info.fieldName;
 
     let simplyAST = simplifyAST(info.fieldASTs[0], info);
     const findOptions = argsToFindOptions(args,Model);
@@ -86,11 +87,17 @@ export default function resolver(Node,opts = {}) {
       );
 
       Node.setTree(tree);
+
+      Object.keys(tree).forEach((relationName) => {
+        const relation = tree[relationName].related;
+        nodeArgs.attributes.push(relation.leftKey);
+      });
     }
 
+    nodeArgs.attributes = _.uniq(nodeArgs.attributes);
     Node.setArgs(nodeArgs);
 
-    const result = await Node.generateDataTree(source);
+    const result = await Node.generateDataTree(source,opts.thinky);
 
     return opts.after(result, args, context, {
       ...info,

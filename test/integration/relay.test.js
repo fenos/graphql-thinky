@@ -64,41 +64,35 @@ test.serial('should return a list Of edges and nodes', async (t) => {
     model: DB.models.User
   });
 
-  const TaskConnector = new Node({
-    model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+  const userType = Graph.userType();
+
+  const UserConnector = new Node({
+    model: DB.models.User,
     connection: {
-      name: 'UserTaskConnection',
-      type: Graph.taskType()
+      args: {
+        thiky: DB.instance
+      },
+      name: 'UserConnection',
+      type: userType
     }
   }).connect();
 
-  const userType = Graph.userType({
-    tasks: {
-      type: TaskConnector.connectionType,
-      args: {
-        ...TaskConnector.connectionArgs
-      },
-      resolve: TaskConnector.resolve
-    }
-  });
-
   const schema = Graph.createSchema({
     users: {
-      type: new GraphQLList(userType),
-      resolve: resolver(User)
+      type: UserConnector.connectionType,
+      args: {
+        ...UserConnector.connectionArgs
+      },
+      resolve: UserConnector.resolve
     }
   });
 
   const result = await graphql(schema, `
       {
         users {
-          name
-          tasks {
-            edges {
-              node {
-               title
-              }
+          edges {
+            node {
+              name
             }
           }
         }
@@ -107,10 +101,8 @@ test.serial('should return a list Of edges and nodes', async (t) => {
 
   if (result.errors) throw new Error(result.errors[0].stack);
 
-  result.data.users.forEach((user) => {
-    user.tasks.edges.forEach((task) => {
-      expect(task.node).to.have.property('title');
-    })
+  result.data.users.edges.forEach((user) => {
+    expect(user.node).to.have.property('name').that.is.a('string');
   });
 });
 
@@ -446,7 +438,6 @@ test.serial('should order a connection of results', async (t) => {
   const TaskConnector = new Node({
     model: DB.models.Task,
     related: DB.models.User._joins.tasks,
-    thinky: DB.instance,
     connection: {
       name: 'UserTaskConnection',
       type: Graph.taskType(),
@@ -483,7 +474,7 @@ test.serial('should order a connection of results', async (t) => {
         }
       },
       type: userType,
-      resolve: resolver(User)
+      resolve: resolver(User, {thinky: DB.instance})
     }
   });
 
@@ -593,4 +584,83 @@ test.serial('should filter a connection of results', async (t) => {
 
   expect(result.data.user.tasks.edges[0]).to.be.deep.equal(tasksFormatted[0]);
   expect(result.data.user.tasks.edges.length).equal(1);
+});
+
+test.serial('allow to list 2 connections', async (t) => {
+
+  const tasks = [];
+  // 2 tasks for each users
+  t.context.users.forEach((user,key) => {
+    tasks.push({title: 'My task'+key+user.id, description: 'My duty'+key, assignee_id: user.id});
+  });
+
+  t.context.tasks = await DB.models.Task.save(tasks);
+
+  const TaskConnector = new Node({
+    model: DB.models.Task,
+    related: DB.models.User._joins.tasks,
+    thinky: DB.instance,
+    connection: {
+      name: 'UserTaskConnection',
+      type: Graph.taskType(),
+      params: {
+        filters: {
+          title: true
+        }
+      }
+    }
+  }).connect();
+
+  const userType = Graph.userType({
+    tasks: {
+      type: TaskConnector.connectionType,
+      args: TaskConnector.connectionArgs,
+      resolve: TaskConnector.resolve
+    }
+  });
+
+  const UserConnection = new Node({
+    model: DB.models.User,
+    connection: {
+      name: 'UserConnection',
+      type: userType,
+    }
+  }).connect();
+
+  const schema = Graph.createSchema({
+    users: {
+      type: UserConnection.connectionType,
+      args:UserConnection.connectionArgs,
+      resolve: UserConnection.resolve
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users {
+          edges {
+            node {
+              name
+              tasks {
+                edges {
+                  node {
+                   title
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `);
+
+  if (result.errors) throw new Error(result.errors[0].stack);
+
+  result.data.users.edges.forEach((user) => {
+    expect(user.node).to.be.defined;
+
+    user.node.tasks.edges.forEach((task) => {
+      expect(task.node).to.be.defined;
+    })
+  });
 });

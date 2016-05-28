@@ -58,8 +58,9 @@ class GraphqlThinky {
     if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
 
     opts.thinky = this.thinky;
+    opts.name = related || '';
 
-    const NodeConnector = this.node(modelName, related, opts.connection).connect();
+    const NodeConnector = this.node(modelName, related, opts).connect();
 
     return {
       type: NodeConnector.connectionType,
@@ -122,15 +123,15 @@ class GraphqlThinky {
    * @param related
    * @returns {Node}
    */
-  node = (modelName, related, connection = {}) => {
+  node = (modelName, related, opts = {}) => {
 
-    connection = connection || {};
+    const connection = opts.connection || {};
 
     const models = this.thinky.models;
 
     let modelTarget = models[modelName];
 
-    let relation;
+    let relation = related;
 
     if (!modelTarget) throw Error(`Model ${modelName} not found.`);
 
@@ -146,9 +147,10 @@ class GraphqlThinky {
         );
     }
     
-    modelTarget = (related) ? relation.model : modelTarget;
-
+    modelTarget = (relation) ? relation.model : modelTarget;
+    
     return new Node({
+      name: opts.name || '',
       model: modelTarget,
       related: relation,
       connection: {

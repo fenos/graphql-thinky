@@ -28,7 +28,7 @@
     "thinky": "^2.3.2"
   },
   "peerDependencies": {
-    "graphql": "^0.5.0",
+    "graphql": "^0.6.0",
     "thinky": "^2.3.2"
   },
   "scripts": {

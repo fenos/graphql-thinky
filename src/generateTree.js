@@ -19,9 +19,9 @@ function inList(list, attribute) {
  * @param context
  * @returns {{}}
  */
-export default function generateTree(simpleAST, type, context) {
+export default function generateTree(simpleAST, type, context,opts) {
 
-  const result = {}; //{relations: {}, attributes: [], order: []};
+  const result = {};
 
   type = type.ofType || type;
 
@@ -54,8 +54,8 @@ export default function generateTree(simpleAST, type, context) {
     // To Prevent further Circular
     // reference i'll re-construct the object
     // on the tree
-    const Node = new BaseNode(params);
-    Node.name = name;
+    const Node      = new BaseNode(params);
+    Node.name       = Node.name || name;
 
     let includeOptions = argsToFindOptions(args, Node.getModel());
 
@@ -79,17 +79,10 @@ export default function generateTree(simpleAST, type, context) {
         });
       }
 
-
-      if (Related.type === 'hasMany' || Related.type === 'belongsTo') {
+      if (Related.type === 'hasMany') {
         includeOptions.attributes.push(Related.rightKey);
       } else {
         includeOptions.attributes.push(Related.leftKey);
-      }
-
-      if (includeOptions.order) {
-
-        result.order = (result.order || []).concat(includeOptions.order);
-        delete includeOptions.order;
       }
 
       const nestedNode = generateTree(
@@ -101,8 +94,6 @@ export default function generateTree(simpleAST, type, context) {
       const hasNestedNode = Object.keys(nestedNode).length > 0;
 
       if (hasNestedNode) {
-
-
         includeOptions.attributes = _.uniq(includeOptions.attributes);
         Node.appendToTree(nestedNode);
       }

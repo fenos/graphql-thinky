@@ -161,6 +161,7 @@ export default (Node) => {
   const $resolver = require('./../resolver').default(Node, {
     list: true,
     handleConnection: false,
+    thinky: Node.thinky,
     before: (options, args, context) => {
 
       // We prepare to paginate the result set,
@@ -204,7 +205,6 @@ export default (Node) => {
       ];
 
       options.relations = [];
-      options.required = false;
       options.attributes = _.uniq(options.attributes);
 
       return connectionOpts.before(options, args, root, context);

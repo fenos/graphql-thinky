@@ -137,7 +137,7 @@ export function buildQuery(seq, args, thinky) {
   args.relations = args.relations || {};
 
   let Query = seq;
-
+ 
   if (_.isArray(args.attributes)) {
     Query = seq.withFields(args.attributes);
   } else if (_.isObject(args.attributes)) {

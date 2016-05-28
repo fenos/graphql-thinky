@@ -16,13 +16,13 @@ class Node {
     this.tree = tree;
     this.args = args;
     this.connection = connection;
-    this.name = name; // The name will be populated based to AST name
+    this.name = name; // The name will be populated based to AST name if not provided
   }
 
-  async query() {
+  async query(thinky) {
 
     this.args.relations = this.tree;
-    const Query = buildQuery(this.model, this.args, this.args.thinky);
+    const Query = buildQuery(this.model, this.args, thinky);
 
     let queryResult;
 
@@ -42,7 +42,8 @@ class Node {
    * @returns {*}
    */
   async resolve(source) {
-    const result = source[this.name];
+    let result = source[this.name];
+
     return Promise.resolve(result);
   }
 
@@ -63,23 +64,21 @@ class Node {
    * Generate data tree
    *
    * @param treeSource
+   * @param thinky
    * @returns {Array}
    */
-  async generateDataTree(treeSource, parentSource) {
+  async generateDataTree(treeSource, thinky) {
 
     if (!this.isRelated()) {
-      treeSource = parentSource = await this.query();
+
+      treeSource = await this.query(thinky);
     }
     else if (this.isRelated() && treeSource) {
 
-      parentSource = await this.resolve(treeSource);
+      treeSource = await this.resolve(treeSource);
     }
 
-    if (treeSource && parentSource) {
-      return parentSource;
-    } else {
-      return treeSource;
-    }
+    return treeSource;
   }
 
   /**
@@ -116,7 +115,7 @@ class Node {
    * @param args
    */
   setArgs(args) {
-    this.args = args;
+    this.args = {...this.args, ...args};
   }
 
   /**
@@ -134,7 +133,7 @@ class Node {
    * @returns {boolean}
    */
   isRelated() {
-    return (this.related !== undefined);
+    return !!this.related;
   }
 
   /**
