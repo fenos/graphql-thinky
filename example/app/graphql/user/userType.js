@@ -4,9 +4,7 @@ import {
     GraphQLList
 } from 'graphql';
 
-const {
-    resolve
-} = GraphQLThinky;
+const { resolve, connect } = GraphQLThinky;
 
 import TodoType from '../todo/todoType';
 
@@ -16,6 +14,14 @@ export default GraphQLThinky.createModelType('user', {
     todos: {
       type: new GraphQLList(TodoType),
       resolve: resolve('user','todos')
+    },
+    todosConnection: {
+      ...connect('user','todos', {
+        connection: {
+          name: 'UserTodoConnection',
+          type: TodoType
+        }
+      })
     }
   })
 });

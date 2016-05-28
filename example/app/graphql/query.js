@@ -4,12 +4,14 @@ import {
 
 import userQuery from './user/userQuery';
 import todoQuery from './todo/todoQuery';
-
+import GraphqlThinky from './graphql-thinky';
 
 export default new GraphQLObjectType({
   name: 'Query',
   fields: () => ({
     ...userQuery,
-    ...todoQuery
+    ...todoQuery,
+
+    node: GraphqlThinky.nodeField
   })
 });

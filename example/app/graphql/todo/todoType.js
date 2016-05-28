@@ -4,6 +4,7 @@ import UserType from './../user/userType';
 const { resolve } = GraphQLThinky;
 
 export default GraphQLThinky.createModelType('todo', {
+  globalId: true,
   fields: () => ({
     user: {
       type: UserType,

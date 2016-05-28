@@ -9,5 +9,14 @@ export default {
   todos: {
     type: new GraphQLList(TodoType),
     resolve: resolve('todo')
+  },
+
+  todosConnection: {
+    ...connect('todo', null, {
+      connection: {
+        name: 'TodoConnection',
+        type: TodoType
+      }
+    })
   }
 }
