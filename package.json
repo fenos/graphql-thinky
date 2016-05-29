@@ -32,7 +32,7 @@
     "thinky": "^2.3.2"
   },
   "scripts": {
-    "test": "ava",
+    "test": "node_modules/.bin/ava --verbose",
     "build": "BABEL_ENV=production babel src -d lib"
   },
   "ava": {
