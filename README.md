@@ -25,6 +25,16 @@ Here is the features not yet implemented, that i'm willing to add over the time.
 - Increase test case coverage
 - and much more when new feature are requested from the folks...
 
+### Contribution
+
+To contribute to the repo, you can do it in few ways:
+
+- **Bugs**: Open a issue into github, add the test case to reproduce the bug (if possible)
+- **New features**: Open an issue into github, explain the needs of the feature once the feature is agreed i will happy to receive Pull request with related tests cases, if you can't do that I'll try to help for the implementation.
+
+**Note**: As the repository grow we will add more strict guidelines for contribution
+
+
 ### Credits
 
 ##### I want to thanks the technologies that allowed **graphql-thinky** to be built. Here the links
