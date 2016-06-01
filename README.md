@@ -2,7 +2,7 @@
 
 ![graphql-thinky-logo](http://www.cagacaga.com/fab_full_big_dark.png)
 
-[![Build Status](https://travis-ci.org/fenos/graphql-thinky.svg?branch=master)](https://travis-ci.org/fenos/graphql-thinky) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/fenos/graphql-thinky/master/LICENSE) [![npm](https://img.shields.io/badge/npm-0.1.4-blue.svg)](https://www.npmjs.com/package/graphql-thinky)
+[![Build Status](https://travis-ci.org/fenos/graphql-thinky.svg?branch=master)](https://travis-ci.org/fenos/graphql-thinky) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/fenos/graphql-thinky/master/LICENSE) [![npm](https://img.shields.io/badge/npm-0.1.5-blue.svg)](https://www.npmjs.com/package/graphql-thinky)
 
 Graphql-thinky helps you to construct your GraphQL schema and the communication layer to a RethinkDB backend. It will perform **batched** and **optimised** queries, during graphql requests. the library is powered by the fantastic thinky ORM and Graphql / RelayJS which rely on.
 
