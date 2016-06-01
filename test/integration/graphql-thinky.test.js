@@ -114,6 +114,46 @@ test.serial('it resolve a list of users with related tasks', async(t) => {
   });
 });
 
+test.serial('it resolve a list of users with related tasks given ast name different then relation name', async(t) => {
+  const { resolve } = t.context.graphqlThinky;
+
+  const taskType = Graph.taskType();
+  const userType = Graph.userType({
+    tasksList: {
+      type: new GraphQLList(taskType),
+      resolve: resolve('User','tasks')
+    }
+  });
+  const schema = Graph.createSchema({
+    users: {
+      type: new GraphQLList(userType),
+      resolve: resolve('User')
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users {
+         name
+         
+         tasksList {
+           title
+         }
+        }
+      }
+    `);
+
+  expect(result.data.users).to.have.lengthOf(t.context.users.length);
+
+  result.data.users.forEach((user) => {
+    expect(user).to.have.property('name').that.is.a('string');
+
+    user.tasksList.forEach((task) => {
+      expect(task).to.have.property('title').that.is.a('string')
+    });
+  });
+});
+
 test.serial('it resolve a connection of users', async(t) => {
   
   const { connect } = t.context.graphqlThinky;

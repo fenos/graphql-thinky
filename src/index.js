@@ -58,7 +58,6 @@ class GraphqlThinky {
     if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
 
     opts.thinky = this.thinky;
-    opts.name = related || '';
 
     const NodeConnector = this.node(modelName, related, opts).connect();
 
@@ -150,7 +149,7 @@ class GraphqlThinky {
     modelTarget = (relation) ? relation.model : modelTarget;
     
     return new Node({
-      name: opts.name || '',
+      name: related || '',
       model: modelTarget,
       related: relation,
       connection: {
