@@ -19,7 +19,7 @@ function inList(list, attribute) {
  * @param context
  * @returns {{}}
  */
-export default function generateTree(simpleAST, type, context,opts) {
+export default function generateTree(simpleAST, type, context) {
 
   const result = {};
 
@@ -99,7 +99,7 @@ export default function generateTree(simpleAST, type, context,opts) {
       }
 
       includeOptions.list = fieldType.typeOf || fieldType instanceof GraphQLList;
-      Node.setArgs(includeOptions);
+      Node.appendArgs(includeOptions);
 
       result[Node.name] = Node;
     }

@@ -95,7 +95,7 @@ export default function resolver(Node,opts = {}) {
     }
 
     nodeArgs.attributes = _.uniq(nodeArgs.attributes);
-    Node.setArgs(nodeArgs);
+    Node.appendArgs(nodeArgs);
 
     const result = await Node.generateDataTree(source,opts.thinky);
 

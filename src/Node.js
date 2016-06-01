@@ -114,7 +114,7 @@ class Node {
    *
    * @param args
    */
-  setArgs(args) {
+  appendArgs(args) {
     this.args = {...this.args, ...args};
   }
 
