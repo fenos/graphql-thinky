@@ -123,6 +123,8 @@ class GraphqlThinky {
    * @returns {Node}
    */
   node = (modelName, related, opts = {}) => {
+    
+    if (! opts.name) opts.name = '';
 
     const connection = opts.connection || {};
 
@@ -149,7 +151,7 @@ class GraphqlThinky {
     modelTarget = (relation) ? relation.model : modelTarget;
     
     return new Node({
-      name: related || '',
+      name: related || opts.name,
       model: modelTarget,
       related: relation,
       connection: {
