@@ -4,7 +4,7 @@
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
   "main": "lib/index.js",
   "scripts": {
-    "check": "node_modules/.bin/xo src/*.js",
+    "check": "node_modules/.bin/xo src/*.js src/**/*.js",
     "test": "npm run check && node_modules/.bin/ava --verbose && rm -rf rethinkdb_data",
     "build": "BABEL_ENV=production babel src -d lib"
   },
@@ -71,6 +71,7 @@
     "rules": {
       "xo/filename-case": ["error", {"case": "camelCase"}],
       "one-var": 0,
+      "indent": [2, 2, {"SwitchCase": 1}],
       "dot-notation": 0
     }
   }

@@ -1,23 +1,11 @@
 import _ from 'lodash';
+import {connectionDefinitions, connectionArgs} from 'graphql-relay';
+import {GraphQLEnumType, GraphQLList} from 'graphql';
 import simplifyAST from '../simplifyAst';
-import {
-    connectionDefinitions,
-    connectionArgs
-} from 'graphql-relay';
-
-import {
-    GraphQLEnumType,
-    GraphQLList
-} from  'graphql';
-
-import {
-    base64,
-    unbase64,
-} from './../base64.js';
-
+import {base64, unbase64} from './../base64.js';
 
 const cursorSeparator = '$',
-      cursorPrefix = 'arrayconnection' + cursorSeparator;
+  cursorPrefix = `arrayconnection${cursorSeparator}`;
 
 /**
  * Creates a cursor based on the item and the
@@ -48,7 +36,7 @@ function fromCursor(cursor) {
     id,
     index
   };
-};
+}
 
 /**
  * Resolve an edge within it's
@@ -63,12 +51,16 @@ function fromCursor(cursor) {
  */
 function resolveEdge(item, index, queriedCursor, args = {}, source) {
   let startIndex = 0;
-  if (queriedCursor) startIndex = Number(queriedCursor.index);
-  if (startIndex !== 0) startIndex++;
+  if (queriedCursor) {
+    startIndex = Number(queriedCursor.index);
+  }
+  if (startIndex !== 0) {
+    startIndex++;
+  }
   return {
     cursor: toCursor(item, index + startIndex),
     node: item,
-    source: source
+    source
   };
 }
 
@@ -88,22 +80,25 @@ function createEdgeInfo(resultset, limit, cursor) {
       resultset[0].fullCount &&
       parseInt(resultset[0].fullCount, 10);
 
-  if (!resultset[0]) fullCount = 0;
+  if (!resultset[0]) {
+    fullCount = 0;
+  }
 
   let hasMorePages = false;
   let hasPreviousPage = false;
 
   if (limit) {
-    let index = cursor ? Number(cursor.index) : 0;
-    let perPage = parseInt(limit, 10);
+    const index = cursor ? Number(cursor.index) : 0;
+    const perPage = parseInt(limit, 10);
     const requested = (index + 1) * perPage;
 
     hasMorePages = requested < fullCount;
     hasPreviousPage = (requested > perPage);
   }
   return {
-    hasMorePages: hasMorePages,
-    hasPreviousPage: hasPreviousPage };
+    hasMorePages,
+    hasPreviousPage
+  };
 }
 /**
  * Resolve a relay connection
@@ -111,15 +106,14 @@ function createEdgeInfo(resultset, limit, cursor) {
  * @param Node
  * @returns {{connectionType, edgeType, nodeType: *, resolveEdge: resolveEdge, connectionArgs: {orderBy: {type}}, resolve: resolver}}
  */
-export default (Node) => {
-
+export default Node => {
   const connectionOpts = Node.connection,
-      connectionName = connectionOpts.name,
-      nodeType = connectionOpts.type,
-      userParms = connectionOpts.params || {};
+    connectionName = connectionOpts.name,
+    nodeType = connectionOpts.type,
+    userParms = connectionOpts.params || {};
 
-  connectionOpts.before = connectionOpts.before || ((options) => options);
-  connectionOpts.after = connectionOpts.after || ((options) => options);
+  connectionOpts.before = connectionOpts.before || (options => options);
+  connectionOpts.after = connectionOpts.after || (options => options);
 
   const {
       edgeType,
@@ -137,7 +131,7 @@ export default (Node) => {
   let orderByEnum;
   if (userParms.orderBy === undefined) {
     orderByEnum = new GraphQLEnumType({
-      name: connectionName + 'ConnectionOrder',
+      name: `${connectionName}ConnectionOrder`,
       values: {
         ID: {value: ['id', 'ASC']}
       }
@@ -145,7 +139,7 @@ export default (Node) => {
   } else {
     orderByEnum = userParms.orderBy;
   }
-  
+
   // Assign the connection arguments
   const $connectionArgs = {
     ...connectionArgs,
@@ -162,7 +156,6 @@ export default (Node) => {
     handleConnection: false,
     thinky: Node.thinky,
     before: (options, args, context) => {
-
       // We prepare to paginate the result set,
       // because fist or last has been requested
       if (args.first || args.last) {
@@ -173,8 +166,10 @@ export default (Node) => {
           const cursor = fromCursor(args.after || args.before);
           const startIndex = Number(cursor.index);
 
-          //TODO: Limitation we can't paginate 1 result at the time
-          if (startIndex > 0) options.offset = startIndex + 1;
+          // Limitation we can't paginate 1 result at the time
+          if (startIndex > 0) {
+            options.offset = startIndex + 1;
+          }
         }
       }
 
@@ -188,8 +183,8 @@ export default (Node) => {
       } else {
         order = args.orderBy;
       }
-      
-      let orderAttribute = order[0][0]; // Order Attribute
+
+      const orderAttribute = order[0][0]; // Order Attribute
       let orderDirection = order[0][1]; // Order Direction
 
       // Depending on the direction requested
@@ -207,9 +202,8 @@ export default (Node) => {
       options.attributes = _.uniq(options.attributes);
 
       return connectionOpts.before(options, args, root, context);
-
     },
-    after: function (resultset, args, root, {source}) {
+    after: (resultset, args, root, {source}) => {
       let cursor = null;
 
       // Once we have the result set we decode the cursor
@@ -219,17 +213,15 @@ export default (Node) => {
       }
 
       // create edges array
-      let edges = resultset.map((value, idx) => {
+      const edges = resultset.map((value, idx) => {
         return resolveEdge(value, idx, cursor, args, source);
       });
 
       const firstEdge = edges[0],
-            lastEdge = edges[edges.length - 1];
+        lastEdge = edges[edges.length - 1];
 
       const edgeInfo = createEdgeInfo(resultset, args.first || args.last, cursor);
-
-      var hasMorePages = edgeInfo.hasMorePages;
-      var hasPreviousPage = edgeInfo.hasPreviousPage;
+      const {hasMorePages, hasPreviousPage} = edgeInfo;
 
       return {
         source,
@@ -238,10 +230,10 @@ export default (Node) => {
         pageInfo: {
           startCursor: firstEdge ? firstEdge.cursor : null,
           endCursor: lastEdge ? lastEdge.cursor : null,
-          hasPreviousPage: hasPreviousPage,
+          hasPreviousPage,
           hasNextPage: hasMorePages
         }
-      }
+      };
     }
   });
 
@@ -272,4 +264,4 @@ export default (Node) => {
     connectionArgs: $connectionArgs,
     resolve: resolver
   };
-}
+};

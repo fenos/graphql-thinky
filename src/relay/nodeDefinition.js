@@ -1,6 +1,6 @@
 import {
-  nodeDefinitions,
-  fromGlobalId
+    nodeDefinitions,
+    fromGlobalId
 } from 'graphql-relay';
 
 import NodeMapper from './nodeMapper';
@@ -13,7 +13,7 @@ import NodeMapper from './nodeMapper';
  * @returns {Function}
  */
 export function idFetcher(Models, nodeTypeMapper) {
-  return async (globalId, context) => {
+  return async(globalId, context) => {
     const {type, id} = fromGlobalId(globalId);
 
     const nodeType = nodeTypeMapper.item(type);
@@ -24,11 +24,20 @@ export function idFetcher(Models, nodeTypeMapper) {
     }
 
     const model = Object.keys(Models).find(model => model === type);
-    return model
-        ? Models[model].get(id).run() // Fetch by id primary key
-        : nodeType
-          ? nodeType.type
-          : null;
+
+    let result = null;
+
+    if (model) {
+      result = Models[model].get(id).run();
+    } else {
+      result = nodeType;
+    }
+
+    if (result) {
+      return nodeType.type;
+    }
+
+    return result;
   };
 }
 
@@ -40,13 +49,12 @@ export function idFetcher(Models, nodeTypeMapper) {
  */
 export function typeResolver(nodeTypeMapper) {
   return obj => {
-    
     const type = obj.__graphqlType__ ||
-            (typeof obj.getModel === 'function') ?
-                obj.getModel()._schema._model._name : obj.name;
+    (typeof obj.getModel === 'function') ?
+        obj.getModel()._schema._model._name : obj.name;
 
     if (!type) {
-      throw new Error(`Unable to determine type of ${ typeof obj }. ` +
+      throw new Error(`Unable to determine type of ${typeof obj}. ` +
           `Either specify a resolve function in 'NodeTypeMapper' object, or specify '__graphqlType__' property on object.`);
     }
 
@@ -62,7 +70,7 @@ export function typeResolver(nodeTypeMapper) {
  * @returns {{nodeTypeMapper: NodeTypeMapper}}
  */
 export function nodeInterfaceMapper(Models) {
-  let nodeTypeMapper = new NodeMapper();
+  const nodeTypeMapper = new NodeMapper();
   const nodeObjects = nodeDefinitions(
       idFetcher(Models, nodeTypeMapper),
       typeResolver(nodeTypeMapper)
