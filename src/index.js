@@ -1,164 +1,168 @@
 import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
-import { nodeInterfaceMapper} from './relay/nodeDefinition';
-import modelToGQLObjectType from './modelToGQLObjectType';
-import Node from './Node';
+import {nodeInterfaceMapper} from './relay/nodeDefinition';
+import modelToGQLObjectType from './modelToGqlObjectType';
+import Node from './node';
 
 /**
  * GraphqlThinky
  */
 class GraphqlThinky {
 
-  static typeMapper = typeMapper;
+	static typeMapper = typeMapper;
 
-  /**
-   * Graphus constructor accept a Thinky
-   * Instance
-   *
-   * @param thinky
-   */
-  constructor(thinky) {
+	/**
+	 * Graphus constructor accept a Thinky
+	 * Instance
+	 *
+	 * @param thinky
+	 */
+	constructor(thinky) {
+		this.thinky = thinky;
 
-    this.thinky = thinky;
+		const nodeMapper = nodeInterfaceMapper(thinky.models);
 
-    const nodeMapper = nodeInterfaceMapper(thinky.models);
+		this.nodeField = nodeMapper.nodeField;
+		this.nodeInterface = nodeMapper.nodeInterface;
+		this.nodeTypeMapper = nodeMapper.nodeTypeMapper;
+	}
 
-    this.nodeField = nodeMapper.nodeField;
-    this.nodeInterface = nodeMapper.nodeInterface;
-    this.nodeTypeMapper = nodeMapper.nodeTypeMapper;
-  }
+	/**
+	 * Resolve a node
+	 *
+	 * @param modelName
+	 * @param related
+	 * @param opts
+	 * @returns {Resolver}
+	 */
+	resolve = (modelName, related, opts = {}) => {
+		opts.thinky = this.thinky;
 
-  /**
-   * Resolve a node
-   *
-   * @param modelName
-   * @param related
-   * @param opts
-   * @returns {Resolver}
-   */
-  resolve = (modelName, related, opts = {}) => {
-    opts.thinky = this.thinky;
+		const Node = this.node(modelName, related);
+		return resolver(Node, opts);
+	};
 
-    const Node = this.node(modelName, related);
-    return resolver(Node, opts);
-  };
+	/**
+	 * Create a relay connection
+	 *
+	 * @param modelName
+	 * @param related
+	 * @param opts
+	 * @returns {Resolver}
+	 */
+	connect = (modelName, related, opts = {}) => {
+		/*eslint-disable */
+		if (!opts.connection) throw Error('Please provide a connection option.');
+		if (!opts.connection.name) throw Error(`Please provide a name for the connection based on Model: ${modelName}.`);
+		if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
+		/*eslint-enable */
 
-  /**
-   * Create a relay connection
-   *
-   * @param modelName
-   * @param related
-   * @param opts
-   * @returns {Resolver}
-   */
-  connect = (modelName, related, opts = {}) => {
+		opts.thinky = this.thinky;
 
-    if (!opts.connection) throw Error('Please provide a connection option.');
-    if (!opts.connection.name) throw Error(`Please provide a name for the connection based on Model: ${modelName}.`);
-    if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
+		const NodeConnector = this.node(modelName, related, opts).connect();
 
-    opts.thinky = this.thinky;
+		return {
+			type: NodeConnector.connectionType,
+			args: {
+				...NodeConnector.connectionArgs,
+				...opts.args || {}
+			},
+			resolve: NodeConnector.resolve
+		};
+	};
 
-    const NodeConnector = this.node(modelName, related, opts).connect();
+	/**
+	 * return a graphQL Object Type
+	 * definition from a Thinky Model.
+	 *
+	 * @param model
+	 * @param opts
+	 */
+	modelToGraphQLDefinition = (model, opts = {}) => {
+		if (typeof model === 'string') {
+			model = this.thinky.models[model];
+		}
+		return toGraphQLDefinition(model, opts);
+	};
 
-    return {
-      type: NodeConnector.connectionType,
-      args: {
-        ...NodeConnector.connectionArgs,
-        ...opts.args || {}
-      },
-      resolve: NodeConnector.resolve
-    }
-  };
+	/**
+	 * Create a GraphQLObjectType based
+	 * to a thinky model. Using this helper
+	 * you'll get free Node type mapping
+	 * for relay
+	 *
+	 * @param model
+	 * @param opts
+	 * @returns {GraphQLObjectType}
+	 */
+	createModelType = (model, opts = {}) => {
+		if (typeof model === 'string') {
+			model = this.thinky.models[model];
+		}
 
-  /**
-   * return a graphQL Object Type
-   * definition from a Thinky Model.
-   *
-   * @param model
-   * @param opts
-   */
-  modelToGraphQLDefinition = (model,opts = {}) => {
-    if (typeof model === 'string') {
-      model = this.thinky.models[model];
-    }
-    return toGraphQLDefinition(model,opts);
-  };
+		// Add node interface if relay is specified
+		if (opts.globalId === true) {
+			opts.interfaces = [this.nodeInterface];
+		}
 
-  /**
-   * Create a GraphQLObjectType based
-   * to a thinky model. Using this helper
-   * you'll get free Node type mapping
-   * for relay
-   *
-   * @param model
-   * @param opts
-   * @returns {GraphQLObjectType}
-   */
-  createModelType = (model, opts = {}) => {
+		const gqlObjectType = modelToGQLObjectType(model, opts);
 
-    if (typeof model === 'string') {
-      model = this.thinky.models[model];
-    }
+		this.nodeTypeMapper.mapTypes({
+			[model._schema._model._name]: gqlObjectType
+		});
 
-    // Add node interface if relay is specified
-    if (opts.globalId === true) {
-      opts.interfaces = [this.nodeInterface];
-    }
+		return gqlObjectType;
+	};
 
-    const gqlObjectType = modelToGQLObjectType(model,opts);
-    
-    this.nodeTypeMapper.mapTypes({
-      [model._schema._model._name]: gqlObjectType
-    });
+	/**
+	 * Create a node
+	 *
+	 * @param modelName
+	 * @param related
+	 * @returns {Node}
+	 */
+	node = (modelName, related, opts = {}) => {
+		if (!opts.name) {
+			opts.name = '';
+		}
 
-    return gqlObjectType;
-  };
+		const connection = opts.connection || {};
 
-  /**
-   * Create a node
-   *
-   * @param modelName
-   * @param related
-   * @returns {Node}
-   */
-  node = (modelName, related, opts = {}) => {
-    
-    if (! opts.name) opts.name = '';
+		const models = this.thinky.models;
 
-    const connection = opts.connection || {};
+		let modelTarget = models[modelName];
 
-    const models = this.thinky.models;
+		let relation = related;
 
-    let modelTarget = models[modelName];
+		if (!modelTarget) {
+			throw new Error(`Model ${modelName} not found.`);
+		}
 
-    let relation = related;
+		// Relation is specified as a string
+		if (typeof related === 'string') {
+			relation = modelTarget._joins[related];
 
-    if (!modelTarget) throw Error(`Model ${modelName} not found.`);
-
-    // Relation is specified as a string
-    if (typeof related === 'string') {
-      relation = modelTarget._joins[related];
-
-      // relation not found can't continue
-      if (!relation)
-        throw Error(
-            `Tried to access relation ${related} of the Model ${modelName},
+			// relation not found can't continue
+			if (!relation) {
+				throw new Error(
+						`Tried to access relation ${related} of the Model ${modelName},
              but relation not found.`
-        );
-    }
-    
-    modelTarget = (relation) ? relation.model : modelTarget;
-    
-    return new Node({
-      name: related || opts.name,
-      model: modelTarget,
-      related: relation,
-      connection: {
-        ...connection
-      }
-    });
-  };
+				);
+			}
+		}
+
+		modelTarget = (relation) ? relation.model : modelTarget;
+
+		return new Node({
+			name: related || opts.name,
+			model: modelTarget,
+			related: relation,
+			connection: {
+				...connection
+			}
+		});
+	};
 }
 
 export default GraphqlThinky;
+

@@ -1,7 +1,7 @@
 import test from 'ava';
 import {DB,graphql} from './../helpers';
 import Graphus from './../../src/index';
-import Node from './../../src/Node';
+import Node from '../../src/node';
 import {expect} from 'chai';
 
 test.beforeEach((t) => {

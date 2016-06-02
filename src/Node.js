@@ -1,159 +1,153 @@
+import assert from 'assert';
 import {buildQuery} from './queryBuilder';
 import {resolveConnection} from './relay';
-import assert from 'assert';
 
 /**
  * Node class
  */
 class Node {
 
-  constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = ''}) {
+	constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = ''}) {
+		assert(model, 'You need to provide a thinky Model');
 
-    assert(model,'You need to provide a thinky Model');
+		this.model = model;
+		this.related = related;
+		this.tree = tree;
+		this.args = args;
+		this.connection = connection;
+		this.name = name; // The name will be populated based to AST name if not provided
+	}
 
-    this.model = model;
-    this.related = related;
-    this.tree = tree;
-    this.args = args;
-    this.connection = connection;
-    this.name = name; // The name will be populated based to AST name if not provided
-  }
+	async query(thinky) {
+		this.args.relations = this.tree;
+		const Query = buildQuery(this.model, this.args, thinky);
 
-  async query(thinky) {
+		let queryResult;
 
-    this.args.relations = this.tree;
-    const Query = buildQuery(this.model, this.args, thinky);
+		if (this.args.list) {
+			queryResult = await Query.run();
+		} else {
+			queryResult = await Query.nth(0).default(null).run();
+		}
 
-    let queryResult;
+		return queryResult;
+	}
 
-    if (!this.args.list) {
-      queryResult = await Query.nth(0).default(null).run();
-    } else {
-      queryResult = await Query.run();
-    }
+	/**
+	 * Resolve from tree
+	 *
+	 * @param source
+	 * @returns {*}
+	 */
+	async resolve(source) {
+		const result = source[this.name];
 
-    return queryResult;
-  }
+		return result;
+	}
 
-  /**
-   * Resolve from tree
-   *
-   * @param source
-   * @returns {*}
-   */
-  async resolve(source) {
-    let result = source[this.name];
+	/**
+	 * Create a relay connection
+	 *
+	 * @returns {{connectionType, edgeType, nodeType, resolveEdge, connectionArgs, resolve}|*}
+	 */
+	connect() {
+		/*eslint-disable */
+		if (!this.connection.name) throw new Error("Please specify a connection name, before call connect on a Node");
+		if (!this.connection.type) throw new Error("Please specify a connection type, before call connect on a Node");
+		/*eslint-enable */
 
-    return Promise.resolve(result);
-  }
+		return resolveConnection(this);
+	}
 
-  /**
-   * Create a relay connection
-   *
-   * @returns {{connectionType, edgeType, nodeType, resolveEdge, connectionArgs, resolve}|*}
-   */
-  connect() {
+	/**
+	 * Generate data tree
+	 *
+	 * @param treeSource
+	 * @param thinky
+	 * @returns {Array}
+	 */
+	async generateDataTree(treeSource, thinky) {
+		if (!this.isRelated()) {
+			treeSource = await this.query(thinky);
+		} else if (this.isRelated() && treeSource) {
+			treeSource = await this.resolve(treeSource);
+		}
 
-    if (!this.connection.name) throw Error("Please specify a connection name, before call connect on a Node");
-    if (!this.connection.type) throw Error("Please specify a connection type, before call connect on a Node");
+		return treeSource;
+	}
 
-    return resolveConnection(this);
-  }
+	/**
+	 * Set Relation Tree.
+	 * the three is an array of nodes
+	 *
+	 * @param tree array
+	 */
+	setTree(tree) {
+		this.tree = tree;
+	}
 
-  /**
-   * Generate data tree
-   *
-   * @param treeSource
-   * @param thinky
-   * @returns {Array}
-   */
-  async generateDataTree(treeSource, thinky) {
+	/**
+	 * Append Nodes to tree
+	 *
+	 * @param Node
+	 */
+	appendToTree(Node) {
+		this.tree = {...this.tree, ...Node};
+	}
 
-    if (!this.isRelated()) {
+	/**
+	 * Get tree
+	 *
+	 * @returns {*}
+	 */
+	getTree() {
+		return this.tree;
+	}
 
-      treeSource = await this.query(thinky);
-    }
-    else if (this.isRelated() && treeSource) {
+	/**
+	 * Set args
+	 *
+	 * @param args
+	 */
+	appendArgs(args) {
+		this.args = {...this.args, ...args};
+	}
 
-      treeSource = await this.resolve(treeSource);
-    }
+	/**
+	 * Determine if this node is a connection
+	 *
+	 * @returns {string|*}
+	 */
+	isConnection() {
+		return (this.connection.name && this.connection.type);
+	}
 
-    return treeSource;
-  }
+	/**
+	 * Determine if the node is related
+	 *
+	 * @returns {boolean}
+	 */
+	isRelated() {
+		return Boolean(this.related);
+	}
 
-  /**
-   * Set Relation Tree.
-   * the three is an array of nodes
-   *
-   * @param tree array
-   */
-  setTree(tree) {
-    this.tree = tree;
-  }
+	/**
+	 * Get model of the Node
+	 *
+	 * @returns {*}
+	 */
+	getModel() {
+		return this.model;
+	}
 
-  /**
-   * Append Nodes to tree
-   *
-   * @param Node
-   */
-  appendToTree(Node) {
-    this.tree = { ...this.tree, ...Node };
-  }
-
-  /**
-   * Get tree
-   *
-   * @returns {*}
-   */
-  getTree() {
-    return this.tree;
-  }
-
-  /**
-   * Set args
-   *
-   * @param args
-   */
-  appendArgs(args) {
-    this.args = {...this.args, ...args};
-  }
-
-  /**
-   * Determine if this node is a connection
-   * 
-   * @returns {string|*}
-   */
-  isConnection() {
-    return (this.connection.name && this.connection.type);
-  }
-
-  /**
-   * Determine if the node is related
-   *
-   * @returns {boolean}
-   */
-  isRelated() {
-    return !!this.related;
-  }
-
-  /**
-   * Get model of the Node
-   *
-   * @returns {*}
-   */
-  getModel() {
-
-    return this.model;
-  }
-
-  /**
-   * Get model Name
-   *
-   * @return {string}
-   */
-  getModelName() {
-    return this.model.getTableName();
-  }
+	/**
+	 * Get model Name
+	 *
+	 * @return {string}
+	 */
+	getModelName() {
+		return this.model.getTableName();
+	}
 }
 
 export default Node;

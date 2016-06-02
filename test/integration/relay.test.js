@@ -13,7 +13,7 @@ import _ from 'lodash';
 import {resolveConnection} from './../../src/relay';
 import {nodeInterfaceMapper} from './../../src/relay/nodeDefinition';
 import resolver from './../../src/resolver';
-import Node from './../../src/Node';
+import Node from '../../src/node';
 
 test.beforeEach(async function(t) {
 

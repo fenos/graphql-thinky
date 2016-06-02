@@ -1,5 +1,5 @@
 import {
-    connectionFromArray,
+		connectionFromArray
 } from 'graphql-relay';
 
 /**
@@ -9,7 +9,7 @@ import {
  * @returns {boolean|*}
  */
 export function isConnection(type) {
-  return typeof type.name !== 'undefined' && type.name.endsWith('Connection');
+	return typeof type.name !== 'undefined' && type.name.endsWith('Connection');
 }
 
 /**
@@ -19,7 +19,7 @@ export function isConnection(type) {
  * @param args
  */
 export function handleConnection(values, args) {
-  return connectionFromArray(values, args);
+	return connectionFromArray(values, args);
 }
 
 /**
@@ -29,8 +29,8 @@ export function handleConnection(values, args) {
  * @returns {*|connectionFields.edges|{type, description}|string|Function}
  */
 export function nodeAST(connectionAST) {
-  return connectionAST.fields.edges &&
-      connectionAST.fields.edges.fields.node;
+	return connectionAST.fields.edges &&
+			connectionAST.fields.edges.fields.node;
 }
 
 /**
@@ -40,7 +40,7 @@ export function nodeAST(connectionAST) {
  * @returns {*}
  */
 export function nodeType(connectionType) {
-  return connectionType._fields.edges.type.ofType._fields.node.type;
+	return connectionType._fields.edges.type.ofType._fields.node.type;
 }
 
 /**

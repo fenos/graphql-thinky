@@ -6,23 +6,25 @@
  * @returns {*}
  */
 function deepMerge(a, b) {
-  Object.keys(b).forEach(function (key) {
-    if (['fields', 'args'].indexOf(key) !== -1) return;
+	Object.keys(b).forEach(key => {
+		if (['fields', 'args'].indexOf(key) !== -1) {
+			return;
+		}
 
-    if (a[key] && b[key] && typeof a[key] === 'object' && typeof b[key] === 'object') {
-      a[key] = deepMerge(a[key], b[key]);
-    } else {
-      a[key] = b[key];
-    }
-  });
+		if (a[key] && b[key] && typeof a[key] === 'object' && typeof b[key] === 'object') {
+			a[key] = deepMerge(a[key], b[key]);
+		} else {
+			a[key] = b[key];
+		}
+	});
 
-  if (a.fields && b.fields) {
-    a.fields = deepMerge(a.fields, b.fields);
-  } else if (a.fields || b.fields) {
-    a.fields = a.fields || b.fields;
-  }
+	if (a.fields && b.fields) {
+		a.fields = deepMerge(a.fields, b.fields);
+	} else if (a.fields || b.fields) {
+		a.fields = a.fields || b.fields;
+	}
 
-  return a;
+	return a;
 }
 
 /**
@@ -31,7 +33,7 @@ function deepMerge(a, b) {
  * @returns {*|boolean}
  */
 export function hasFragments(info) {
-  return info.fragments && Object.keys(info.fragments).length > 0;
+	return info.fragments && Object.keys(info.fragments).length > 0;
 }
 
 /**
@@ -41,7 +43,7 @@ export function hasFragments(info) {
  * @returns {*|boolean|*|boolean}
  */
 export function isFragment(info, ast) {
-  return hasFragments(info) && info.fragments[ast.name.value] && ast.kind !== 'FragmentDefinition';
+	return hasFragments(info) && info.fragments[ast.name.value] && ast.kind !== 'FragmentDefinition';
 }
 
 /**
@@ -52,54 +54,61 @@ export function isFragment(info, ast) {
  * @returns {*}
  */
 export default function simplifyAST(ast, info, parent) {
-  var selections;
-  info = info || {};
+	let selections;
+	info = info || {};
 
-  if (ast.selectionSet) selections = ast.selectionSet.selections;
-  if (Array.isArray(ast)) selections = ast;
+	if (ast.selectionSet) {
+		selections = ast.selectionSet.selections;
+	}
 
-  if (isFragment(info, ast)) {
-    return simplifyAST(info.fragments[ast.name.value], info);
-  }
+	if (Array.isArray(ast)) {
+		selections = ast;
+	}
 
-  if (!selections) return {
-    fields: {},
-    args: {}
-  };
+	if (isFragment(info, ast)) {
+		return simplifyAST(info.fragments[ast.name.value], info);
+	}
 
-  return selections.reduce(function (simpleAST, selection) {
-    if (selection.kind === 'FragmentSpread' || selection.kind === 'InlineFragment') {
-      simpleAST = deepMerge(
-          simpleAST, simplifyAST(selection, info)
-      );
-      return simpleAST;
-    }
+	if (!selections) {
+		return {
+			fields: {},
+			args: {}
+		};
+	}
 
-    var name = selection.name.value
-        , alias = selection.alias && selection.alias.value
-        , key = alias || name;
+	return selections.reduce((simpleAST, selection) => {
+		if (selection.kind === 'FragmentSpread' || selection.kind === 'InlineFragment') {
+			simpleAST = deepMerge(
+					simpleAST, simplifyAST(selection, info)
+			);
+			return simpleAST;
+		}
 
-    simpleAST.fields[key] = simpleAST.fields[key] || {};
-    simpleAST.fields[key] = deepMerge(
-        simpleAST.fields[key], simplifyAST(selection, info, simpleAST.fields[key])
-    );
+		const name = selection.name.value,
+			alias = selection.alias && selection.alias.value,
+			key = alias || name;
 
-    if (alias) {
-      simpleAST.fields[key].key = name;
-    }
+		simpleAST.fields[key] = simpleAST.fields[key] || {};
+		simpleAST.fields[key] = deepMerge(
+				simpleAST.fields[key], simplifyAST(selection, info, simpleAST.fields[key])
+		);
 
-    simpleAST.fields[key].args = selection.arguments.reduce(function (args, arg) {
-      args[arg.name.value] = arg.value.value;
-      return args;
-    }, {});
+		if (alias) {
+			simpleAST.fields[key].key = name;
+		}
 
-    if (parent) {
-      Object.defineProperty(simpleAST.fields[key], '$parent', { value: parent, enumerable: false });
-    }
+		simpleAST.fields[key].args = selection.arguments.reduce((args, arg) => {
+			args[arg.name.value] = arg.value.value;
+			return args;
+		}, {});
 
-    return simpleAST;
-  }, {
-    fields: {},
-    args: {}
-  });
+		if (parent) {
+			Object.defineProperty(simpleAST.fields[key], '$parent', {value: parent, enumerable: false});
+		}
+
+		return simpleAST;
+	}, {
+		fields: {},
+		args: {}
+	});
 }

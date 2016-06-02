@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import simplifyAST from './../simplifyAST';
+import simplifyAST from '../simplifyAst';
 import {
     connectionDefinitions,
     connectionArgs
@@ -82,12 +82,11 @@ function resolveEdge(item, index, queriedCursor, args = {}, source) {
  * @returns {{hasMorePages: boolean, hasPreviousPage: boolean}}
  */
 function createEdgeInfo(resultset, limit, cursor) {
-
   // retrieve full count from the first edge
   // or default 10
   let fullCount = resultset[0] &&
-      resultset[0].full_count &&
-      parseInt(resultset[0].full_count, 10);
+      resultset[0].fullCount &&
+      parseInt(resultset[0].fullCount, 10);
 
   if (!resultset[0]) fullCount = 0;
 

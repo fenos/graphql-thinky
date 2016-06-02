@@ -1,5 +1,5 @@
 import test from 'ava';
-import simplifyAST from './../../src/simplifyAST';
+import simplifyAST from '../../src/simplifyAst';
 import {parse as parser} from 'graphql/language/parser';
 import {expect} from 'chai';
 

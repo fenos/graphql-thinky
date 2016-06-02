@@ -6,7 +6,7 @@ import {
 } from 'graphql';
 
 import {expect} from 'chai';
-import modelToGQLObjectType from './../../src/modelToGQLObjectType';
+import modelToGQLObjectType from '../../src/modelToGqlObjectType';
 import thinky from './../helpers/db/thinky';
 const type = thinky.type;
 

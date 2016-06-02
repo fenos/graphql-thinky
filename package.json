@@ -3,6 +3,11 @@
   "version": "0.1.5",
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
   "main": "lib/index.js",
+  "scripts": {
+    "check": "node_modules/.bin/xo src/*.js",
+    "test": "npm run check && node_modules/.bin/ava --verbose && rm -rf rethinkdb_data",
+    "build": "BABEL_ENV=production babel src -d lib"
+  },
   "dependencies": {
     "graphql-relay": "^0.4.1",
     "lodash": "^4.0.0",
@@ -26,15 +31,12 @@
     "sinon": "^1.15.4",
     "sinon-as-promised": "^4.0.0",
     "sinon-chai": "^2.8.0",
-    "thinky": "^2.3.2"
+    "thinky": "^2.3.2",
+    "xo": "^0.15.1"
   },
   "peerDependencies": {
     "graphql": "^0.5.0",
     "thinky": "^2.3.2"
-  },
-  "scripts": {
-    "test": "node_modules/.bin/ava --verbose",
-    "build": "BABEL_ENV=production babel src -d lib"
   },
   "ava": {
     "files": [
@@ -62,5 +64,14 @@
     }
   },
   "author": "Fabrizio Fenoglio",
-  "license": "MIT"
+  "license": "MIT",
+  "xo": {
+    "esnext": true,
+    "ignore": ["example/**"],
+    "rules": {
+      "xo/filename-case": ["error", {"case": "camelCase"}],
+      "one-var": 0,
+      "dot-notation": 0
+    }
+  }
 }

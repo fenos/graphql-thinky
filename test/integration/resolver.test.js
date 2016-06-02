@@ -11,7 +11,7 @@ import {
 } from 'graphql';
 import _ from 'lodash';
 import resolver from './../../src/resolver';
-import Node from './../../src/Node';
+import Node from '../../src/node';
 
 test.beforeEach(async function(t) {
 
