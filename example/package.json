@@ -13,9 +13,9 @@
     "body-parser": "^1.15.1",
     "express": "^4.13.4",
     "express-graphql": "^0.5.1",
-    "graphql": "^0.5.0",
+    "graphql": "^0.6.0",
     "graphql-relay": "^0.4.1",
-    "graphql-thinky": "../src",
+    "graphql-thinky": "../",
     "thinky": "^2.3.2"
   },
   "devDependencies": {
