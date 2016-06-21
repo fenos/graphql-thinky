@@ -9,6 +9,9 @@ import GraphQLThinky from '../graphql-thinky';
 const { resolve, connect } = GraphQLThinky;
 
 export default {
+  /**
+   * User query
+   */
   users: {
     args: {
       name: {
@@ -27,8 +30,18 @@ export default {
     },
     resolve: resolve('user')
   },
+
+  /**
+   * User Connection query,
+   * it use relay spec
+   */
   usersConnection: {
     ...connect('user', null, {
+      args: {
+        name: {
+          type: GraphQLString
+        }
+      },
       connection: {
         name: 'UserConnection',
         type: UserType

@@ -3,7 +3,7 @@ const type = thinky.type;
 
 
 const User = thinky.createModel('user', {
-  name: type.string()
+  name: type.string(),
 });
 
 User.relations = () => {
