@@ -35,7 +35,7 @@
     "xo": "^0.15.1"
   },
   "peerDependencies": {
-    "graphql": "^0.5.0",
+    "graphql": "^0.5.0 || ^0.6.0",
     "thinky": "^2.3.2"
   },
   "ava": {
