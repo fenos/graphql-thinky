@@ -82,6 +82,11 @@ class GraphqlThinky {
     if (typeof model === 'string') {
       model = this.thinky.models[model];
     }
+
+    if (!model) {
+      throw new Error(`Model name: ${model} not found.`);
+    }
+
     return toGraphQLDefinition(model, opts);
   };
 
@@ -98,6 +103,10 @@ class GraphqlThinky {
   createModelType = (model, opts = {}) => {
     if (typeof model === 'string') {
       model = this.thinky.models[model];
+    }
+
+    if (!model) {
+      throw new Error(`Model name: ${model} not found.`);
     }
 
     // Add node interface if relay is specified
@@ -130,9 +139,8 @@ class GraphqlThinky {
 
     const models = this.thinky.models;
 
-    let modelTarget = models[modelName];
-
-    let relation = related;
+    let modelTarget = models[modelName],
+      relation = related;
 
     if (!modelTarget) {
       throw new Error(`Model ${modelName} not found.`);
