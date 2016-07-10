@@ -15,10 +15,10 @@ import {isConnection, nodeAST, nodeType} from './relay';
  */
 export default function resolver(Node, opts = {}) {
   if (opts.before === undefined) {
-    opts.before = opts => opts;
+    opts.before = async opts => opts;
   }
   if (opts.after === undefined) {
-    opts.after = opts => opts;
+    opts.after = async opts => opts;
   }
 
   const Model = Node.getModel();
@@ -39,7 +39,9 @@ export default function resolver(Node, opts = {}) {
     Node.name = Node.name || info.fieldName;
 
     let simplyAST = simplifyAST(info.fieldASTs[0], info);
-    const findOptions = argsToFindOptions(args, Model);
+    const findOptions = argsToFindOptions(args, Model, {
+      maxLimit: opts.maxLimit
+    });
 
     let nodeArgs = {
       attributes: [],
@@ -61,7 +63,7 @@ export default function resolver(Node, opts = {}) {
       type = nodeType(type);
     }
 
-    nodeArgs = opts.before(nodeArgs, args, context, {
+    nodeArgs = await opts.before(nodeArgs, args, context, {
       ...info,
       ast: simplyAST,
       type,
@@ -74,18 +76,23 @@ export default function resolver(Node, opts = {}) {
       return (modelRelations.indexOf(field) === -1) &&
           modelSchema.fields.hasOwnProperty(field) &&
           modelSchema.fields[field] !== 'Virtual';
-    }).concat(['id']);
+    }).concat(['id']).concat(opts.defaultAttributes || []);
 
     type = type.ofType || type;
 
     if (!Node.isRelated()) {
-      const tree = generateTree(
+      const tree = await generateTree(
           simplyAST,
           type,
-          context
+          context,
+          opts
       );
 
       Node.setTree(tree);
+
+      if (opts.nestingLimit && Node.depthOfTree() > parseInt(opts.nestingLimit, 10)) {
+        throw new Error('Nesting size not allowed');
+      }
 
       Object.keys(tree).forEach(relationName => {
         const relation = tree[relationName].related;
@@ -98,7 +105,7 @@ export default function resolver(Node, opts = {}) {
 
     const result = await Node.generateDataTree(source, opts.thinky);
 
-    return opts.after(result, args, context, {
+    return await opts.after(result, args, context, {
       ...info,
       ast: simplyAST,
       type,

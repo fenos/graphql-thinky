@@ -10,7 +10,7 @@ import {
 
 import {globalIdField} from 'graphql-relay';
 import {type} from 'thinky';
-import _ from 'lodash';
+import {upperFirst} from 'lodash';
 
 let customTypeMapper;
 
@@ -53,7 +53,7 @@ export function toGraphQLDefinition(thinkyModel, opts = {}) {
     }
 
     const modelType = modelSchema[key];
-    const name = (type.isObject(modelType)) ? _.upperFirst(modelDef._name) + _.upperFirst(key) : key;
+    const name = (type.isObject(modelType)) ? upperFirst(modelDef._name) + upperFirst(key) : key;
     const graphQLType = attributeToGraphQLType(modelType, name);
 
     if (graphQLType) {
@@ -85,7 +85,7 @@ export function toGraphQLDefinition(thinkyModel, opts = {}) {
   // Add relay global id if requested
   if (opts.globalId) {
     const field = `${modelName.toLowerCase()}ID`;
-    graphQLDefinition.id = globalIdField(modelName, instance => instance.id);
+    graphQLDefinition.id = globalIdField(upperFirst(modelName), instance => instance.id);
     graphQLDefinition[field] = {
       type: GraphQLString,
       resolve: source => {
@@ -186,7 +186,7 @@ export function attributeToGraphQLType(attributeType, name) {
     }
 
     return new GraphQLObjectType({
-      name: _.upperFirst(name),
+      name: upperFirst(name),
       fields: {
         ...graphQLTypeDef
       }

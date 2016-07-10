@@ -5,10 +5,11 @@ import _ from 'lodash';
  * Args to find options
  *
  * @param args
- * @param modelSchama
+ * @param model
+ * @param opts
  * @returns {{}}
  */
-export function argsToFindOptions(args, model) {
+export function argsToFindOptions(args, model, opts = {maxLimit: 50}) {
   const result = {
       filter: {},
       limit: undefined,
@@ -18,6 +19,8 @@ export function argsToFindOptions(args, model) {
     modelSchema = thinkySchema(model),
     attributes = Object.keys(modelSchema.fields).concat('id');
 
+  opts.maxLimit = (opts.maxLimit === undefined) ? false : parseInt(opts.maxLimit, 10);
+
   if (args) {
     Object.keys(args).forEach(key => {
       if (attributes.indexOf(key) !== -1) {
@@ -25,6 +28,7 @@ export function argsToFindOptions(args, model) {
         result.filter[key] = args[key];
       }
 
+      // Limit arg
       if (key === 'limit' && args[key]) {
         result.limit = parseInt(args[key], 10);
       }
@@ -41,6 +45,18 @@ export function argsToFindOptions(args, model) {
         }
       }
     });
+
+    const maxLimit = opts.maxLimit;
+
+    if (maxLimit) {
+      if (!result.limit) {
+        result.limit = maxLimit;
+      }
+
+      if (result.limit > maxLimit) {
+        result.limit = maxLimit;
+      }
+    }
 
     return result;
   }
@@ -107,6 +123,7 @@ export function resolveJoin(thinky, node) {
       if (type === 'belongsTo') {
         findArgs.attributes = false;
         findArgs.order = false;
+        findArgs.limit = false;
       } else {
         findArgs.attributes = columns;
       }
@@ -128,48 +145,54 @@ export function resolveJoin(thinky, node) {
  */
 export function buildQuery(seq, args, thinky) {
   args.relations = args.relations || {};
-
   let Query = seq;
 
-  if (_.isArray(args.attributes)) {
-    Query = seq.withFields(args.attributes);
-  } else if (_.isObject(args.attributes)) {
-    Query = seq.withFields(args.attributes);
-  }
+  // If "query" arg is not given, then
+  // we run the default query composition
+  if (typeof args.query !== 'function') {
 
-  if (args.filter && Object.keys(args.filter).length > 0) {
-    Object.keys(args.filter).forEach(fieldName => {
-      if (_.isFunction(args.filter[fieldName])) {
-        Query = Query.filter(args.filter[fieldName]);
-        delete args.filter[fieldName];
-      }
-    });
+    if (_.isArray(args.attributes)) {
+      Query = seq.withFields(args.attributes);
+    } else if (_.isObject(args.attributes)) {
+      Query = seq.withFields(args.attributes);
+    }
 
-    Query = Query.filter(args.filter);
-  }
+    if (args.filter && Object.keys(args.filter).length > 0) {
+      Object.keys(args.filter).forEach(fieldName => {
+        if (_.isFunction(args.filter[fieldName])) {
+          Query = Query.filter(args.filter[fieldName]);
+          delete args.filter[fieldName];
+        }
+      });
 
-  if (args.count) {
-    const countQuery = Query.merge(() => {
-      return {
-        fullCount: Query._query.count()
-      };
-    });
+      Query = Query.filter(args.filter);
+    }
 
-    Query = countQuery;
-  }
+    if (args.count) {
+      const countQuery = Query.merge(() => {
+        return {
+          fullCount: Query._query.count()
+        };
+      });
 
-  if (args.order && args.order[1] === 'DESC') {
-    Query = Query.orderBy(thinky.r.desc((args.order[0])));
-  } else if (args.order && args.order[0]) {
-    Query = Query.orderBy(args.order[0]);
-  }
+      Query = countQuery;
+    }
 
-  if (args.offset) {
-    Query = Query.skip(parseInt(args.offset, 10));
-  }
+    if (args.order && args.order[1] === 'DESC') {
+      Query = Query.orderBy(thinky.r.desc((args.order[0])));
+    } else if (args.order && args.order[0]) {
+      Query = Query.orderBy(args.order[0]);
+    }
 
-  if (args.limit) {
-    Query = Query.limit(parseInt(args.limit, 10));
+    if (args.offset) {
+      Query = Query.skip(parseInt(args.offset, 10));
+    }
+
+    if (args.limit) {
+      Query = Query.limit(parseInt(args.limit, 10));
+    }
+  } else {
+    Query = args.query(seq,args,thinky);
   }
 
   const joinRelations = {};

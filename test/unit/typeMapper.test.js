@@ -241,7 +241,7 @@ test("it should add a relay global ID", () => {
   expect(GraphQLFields.id.type.ofType.name).to.equal('ID');
   expect(GraphQLFields.id.resolve({
     id: 'hello'
-  })).to.equal(toGlobalId('user-test-6', 'hello'));
+  })).to.equal(toGlobalId('User-test-6', 'hello'));
 
   expect(GraphQLFields['user-test-6ID'].type).to.be.deep.equal(GraphQLString);
 });

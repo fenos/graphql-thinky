@@ -2,7 +2,13 @@ import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
 import {nodeInterfaceMapper} from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
+import {upperFirst} from 'lodash';
 import Node from './node';
+
+const defaultOptions = {
+  maxLimit: 50,
+  nestingLimit: 10
+};
 
 /**
  * GraphqlThinky
@@ -16,9 +22,11 @@ class GraphqlThinky {
    * Instance
    *
    * @param thinky
+   * @param options
    */
-  constructor(thinky) {
+  constructor(thinky, options = {}) {
     this.thinky = thinky;
+    this.options = Object.assign(defaultOptions, options);
 
     const nodeMapper = nodeInterfaceMapper(thinky.models);
 
@@ -36,10 +44,8 @@ class GraphqlThinky {
    * @returns {Resolver}
    */
   resolve = (modelName, related, opts = {}) => {
-    opts.thinky = this.thinky;
-
     const Node = this.node(modelName, related);
-    return resolver(Node, opts);
+    return resolver(Node, {...this.options, ...opts});
   };
 
   /**
@@ -57,9 +63,10 @@ class GraphqlThinky {
     if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
     /*eslint-enable */
 
-    opts.thinky = this.thinky;
-
-    const NodeConnector = this.node(modelName, related, opts).connect();
+    const NodeConnector = this.node(modelName, related, {
+      ...this.options,
+      ...opts
+    }).connect();
 
     return {
       type: NodeConnector.connectionType,
@@ -117,7 +124,7 @@ class GraphqlThinky {
     const gqlObjectType = modelToGQLObjectType(model, opts);
 
     this.nodeTypeMapper.mapTypes({
-      [model._schema._model._name]: gqlObjectType
+      [gqlObjectType.name]: gqlObjectType
     });
 
     return gqlObjectType;
@@ -128,6 +135,7 @@ class GraphqlThinky {
    *
    * @param modelName
    * @param related
+   * @param opts
    * @returns {Node}
    */
   node = (modelName, related, opts = {}) => {
@@ -165,6 +173,8 @@ class GraphqlThinky {
       name: related || opts.name,
       model: modelTarget,
       related: relation,
+      thinky: this.thinky,
+      query: opts.query,
       connection: {
         ...connection
       }

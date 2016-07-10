@@ -1,12 +1,12 @@
 {
   "name": "graphql-thinky",
-  "version": "0.1.7",
+  "version": "0.3.0",
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
   "main": "lib/index.js",
   "scripts": {
     "check": "node_modules/.bin/xo src/*.js src/**/*.js",
     "test": "npm run check && node_modules/.bin/ava --verbose && rm -rf rethinkdb_data",
-    "build": "BABEL_ENV=production babel src -d lib"
+    "build": "rm -rf lib && BABEL_ENV=production babel src -d lib"
   },
   "dependencies": {
     "graphql-relay": "^0.4.1",

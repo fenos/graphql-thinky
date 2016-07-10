@@ -7,7 +7,7 @@ import {resolveConnection} from './relay';
  */
 class Node {
 
-  constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = ''}) {
+  constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = '', query = undefined}) {
     assert(model, 'You need to provide a thinky Model');
 
     this.model = model;
@@ -16,10 +16,19 @@ class Node {
     this.args = args;
     this.connection = connection;
     this.name = name; // The name will be populated based to AST name if not provided
+    this.query = query;
   }
 
-  async query(thinky) {
+  /**
+   * Resolve node based
+   * a rethinkDB query
+   *
+   * @param thinky
+   * @returns {*}
+   */
+  async queryResolve(thinky) {
     this.args.relations = this.tree;
+    this.args.query = this.query;
     const Query = buildQuery(this.model, this.args, thinky);
 
     let queryResult;
@@ -68,7 +77,7 @@ class Node {
    */
   async generateDataTree(treeSource, thinky) {
     if (!this.isRelated()) {
-      treeSource = await this.query(thinky);
+      treeSource = await this.queryResolve(thinky);
     } else if (this.isRelated() && treeSource) {
       treeSource = await this.resolve(treeSource);
     }
@@ -96,6 +105,35 @@ class Node {
   }
 
   /**
+   * Return the depth level
+   * of the tree
+   *
+   * @param object
+   * @param level
+   * @returns {*|number}
+   */
+  depthOfTree(object, level) {
+    // Returns an int of the deepest level of an object
+    level = level || 1;
+    object = object || this.tree;
+
+    let key;
+    for (key in object) {
+      if (!(object[key] instanceof Node)) {
+        continue;
+      }
+
+      const nodeTree = object[key].getTree();
+      if (Object.keys(nodeTree).length > 0) {
+        level++;
+        level = this.depthOfTree(nodeTree, level);
+      }
+    }
+
+    return level;
+  }
+
+  /**
    * Get tree
    *
    * @returns {*}
@@ -105,7 +143,7 @@ class Node {
   }
 
   /**
-   * Set args
+   * Append args
    *
    * @param args
    */

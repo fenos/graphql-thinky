@@ -28,7 +28,7 @@ export function idFetcher(Models, nodeTypeMapper) {
     let result = null;
 
     if (model) {
-      result = Models[model].get(id).run();
+      result = await Models[model].get(id).run();
     } else {
       result = nodeType;
     }

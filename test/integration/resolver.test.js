@@ -525,14 +525,12 @@ test.serial('should allow for nested recursive fetching', async(t) => {
   const Tag = DB.models.Tag;
 
   const UserResolver = new Node({
-    name: 'user',
     model: User
   });
 
   const TagResolver = new Node({
-    name: 'tag',
     model: Tag,
-    related: Task._joins.tag
+    related: Task._joins.tags
   });
 
   const TaskResolver = new Node({
@@ -709,7 +707,7 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
   });
 });
 
-test("it should handle empty results", async(t) => {
+test.serial("it should handle empty results", async(t) => {
 
   const UserModel = DB.models.User;
   await UserModel.delete();
@@ -738,4 +736,211 @@ test("it should handle empty results", async(t) => {
     `, null);
   
   expect(result.data.users).to.be.empty;
-})
+});
+
+test.serial("it should fetch default attributes", async(t) => {
+
+  const UserModel = DB.models.User;
+
+  const UserResolver = new Node({
+    model: UserModel
+  });
+
+  const userType = Graph.userType();
+
+  const schema = Graph.createSchema({
+    users: {
+      type: new GraphQLList(userType),
+      resolve: resolver(UserResolver, {
+        defaultAttributes: ['surname'],
+        thinky: DB.instance
+      })
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users {
+          name
+        }
+      }
+    `, null);
+
+  result.data.users.forEach(user => {
+    expect(user.name).to.be.a('string');
+    expect(user.surname).to.be.a('string');
+  });
+});
+
+test.serial("it should not allow limiting result more then the default limit to prevent hacks", async(t) => {
+
+  const UserModel = DB.models.User;
+
+  const UserResolver = new Node({
+    model: UserModel
+  });
+
+  const userType = Graph.userType();
+
+  const schema = Graph.createSchema({
+    users: {
+      type: new GraphQLList(userType),
+      args: {
+        limit: {
+          type: GraphQLInt
+        }
+      },
+      resolve: resolver(UserResolver, {
+        maxLimit: 2,
+        thinky: DB.instance
+      })
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users(limit: 100000) {
+          name
+        }
+      }
+    `, null);
+
+  expect(result.data.users).to.have.lengthOf(2);
+});
+
+test.serial("it will set a nesting limit protection for our queries", async(t) => {
+
+  const tags = [];
+  t.context.tasks.forEach( (task, key) => {
+    const Tag = new DB.models.Tag({
+      name: 'tag' + key,
+      description: 'tag-n-' + key
+    });
+    task.tags = [Tag];
+    tags.push(task.saveAll({tags: true}));
+  });
+
+  await Promise.all(tags);
+
+  const User = DB.models.User;
+  const Task = DB.models.Task;
+  const Tag = DB.models.Tag;
+
+  const UserResolver = new Node({
+    model: User
+  });
+
+  const TagResolver = new Node({
+    model: Tag,
+    related: Task._joins.tags
+  });
+
+  const TaskResolver = new Node({
+    model: Task,
+    related: User._joins.tasks
+  });
+
+  const userType = Graph.userType({
+    tasks: {
+      type: new GraphQLList(Graph.taskType({
+        tags: {
+          type: new GraphQLList(Graph.tagType()),
+          resolve: resolver(TagResolver,{
+            before: (opts) => {
+              opts.order = ['name','ASC'];
+              return opts;
+            }
+          })
+        }
+      })),
+      resolve: resolver(TaskResolver)
+    }
+  });
+
+  const schema = Graph.createSchema({
+    user: {
+      type: userType,
+      resolve: resolver(UserResolver,{
+        nestingLimit: 1
+      }),
+      args: {
+        id: {
+          type: new GraphQLNonNull(GraphQLString)
+        }
+      }
+    }
+  });
+
+  const user = t.context.users[0];
+
+  const result = await graphql(schema, `
+      {
+        user(id: "${user.id}") {
+          name
+          tasks {
+            title
+            tags {
+              name
+            }
+          }
+        }
+      }
+    `, null);
+
+  expect(result.data.user).to.be.equal(null);
+});
+
+test.serial("it should allow to overwrite and compose a custom query on each Node", async(t) => {
+
+  const UserModel = DB.models.User;
+  const TaskModel = DB.models.Task;
+
+  const user = await UserModel.get(t.context.users[0].id).getJoin({tasks: true}).run();
+  const task = user.tasks[0];
+
+  const UserResolver = new Node({
+    model: UserModel,
+    query: (seq,args,thinky) => {
+      return seq.filter({id: user.id});
+    }
+  });
+
+  const TaskResolver = new Node({
+    model: TaskModel,
+    query: (seq) => {
+      return seq.filter({id: task.id});
+    }
+  });
+
+  const userType = Graph.userType({
+    tasks: {
+      type: new GraphQLList(Graph.taskType()),
+      resolve: resolver(TaskResolver,{
+
+      })
+    }
+  });
+
+  const schema = Graph.createSchema({
+    users: {
+      type: new GraphQLList(userType),
+      resolve: resolver(UserResolver, {
+        thinky: DB.instance
+      })
+    }
+  });
+
+  const result = await graphql(schema, `
+      {
+        users {
+          name
+          tasks {
+            title
+          }
+        }
+      }
+    `, null);
+  
+  expect(result.data.users).to.have.lengthOf(1);
+  expect(result.data.users[0].tasks).to.have.lengthOf(1);
+});

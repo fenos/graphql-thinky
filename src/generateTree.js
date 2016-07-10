@@ -15,14 +15,15 @@ function inList(list, attribute) {
  * @param simpleAST
  * @param type
  * @param context
- * @returns {{}}
+ * @param opts
+ * @returns <Promise>
  */
-export default function generateTree(simpleAST, type, context) {
+export default function generateTree(simpleAST, type, context, opts = {}) {
   const result = {};
 
   type = type.ofType || type;
 
-  Object.keys(simpleAST.fields).forEach(key => {
+  return Promise.all(Object.keys(simpleAST.fields).map(key => {
     let fieldAST = simpleAST.fields[key],
       name = fieldAST.key || key, // eslint-disable-line prefer-const
       fieldType = type._fields[name] && type._fields[name].type;
@@ -32,7 +33,7 @@ export default function generateTree(simpleAST, type, context) {
 
     // No point continue is no resolve or $Node not found on the resolver
     if (!includeResolver || (includeResolver && !includeResolver.$Node)) {
-      return;
+      return null;
     }
 
     if (isConnection(fieldType)) {
@@ -42,10 +43,11 @@ export default function generateTree(simpleAST, type, context) {
 
     // No point inncluding if no fields have been asked for
     if (!fieldAST) {
-      return;
+      return null;
     }
 
     const resolverNode = includeResolver.$Node,
+      resolverOpts = includeResolver.$options,
       params = {};
 
     Object.keys(resolverNode).forEach(key => {
@@ -58,7 +60,9 @@ export default function generateTree(simpleAST, type, context) {
     const Node = new BaseNode(params);
     Node.name = Node.name || name;
 
-    let includeOptions = argsToFindOptions(args, Node.getModel());
+    let includeOptions = argsToFindOptions(args, Node.getModel(), {
+      maxLimit: opts.maxLimit
+    });
 
     if (Node.isRelated()) {
       const Related = Node.related;
@@ -68,14 +72,8 @@ export default function generateTree(simpleAST, type, context) {
 
       includeOptions.attributes = (includeOptions.attributes || [])
           .concat(Object.keys(fieldAST.fields).map(key => fieldAST.fields[key].key || key))
-          .filter(inList.bind(null, allowedAttributes));
-
-      if (includeResolver.$before) {
-        includeOptions = includeResolver.$before(includeOptions, args, context, {
-          ast: fieldAST,
-          type
-        });
-      }
+          .filter(inList.bind(null, allowedAttributes))
+          .concat(resolverOpts.defaultAttributes || []); // merge default attributes
 
       if (Related.type === 'hasMany') {
         includeOptions.attributes.push(Related.rightKey);
@@ -83,25 +81,38 @@ export default function generateTree(simpleAST, type, context) {
         includeOptions.attributes.push(Related.leftKey);
       }
 
-      const nestedNode = generateTree(
-          fieldAST,
-          fieldType,
-          context
-      );
+      return Promise.resolve().then(() => {
+        if (typeof includeResolver.$before === 'function') {
+          includeOptions = includeResolver.$before(includeOptions, args, context, {
+            ast: fieldAST,
+            type
+          });
+        }
 
-      const hasNestedNode = Object.keys(nestedNode).length > 0;
+        return includeOptions;
+      }).then(includeOptions => {
+        return generateTree(
+            fieldAST,
+            fieldType,
+            context,
+            resolverOpts
+        ).then(nestedNode => {
+          const hasNestedNode = Object.keys(nestedNode).length > 0;
 
-      if (hasNestedNode) {
-        includeOptions.attributes = _.uniq(includeOptions.attributes);
-        Node.appendToTree(nestedNode);
-      }
+          if (hasNestedNode) {
+            includeOptions.attributes = _.uniq(includeOptions.attributes);
+            Node.appendToTree(nestedNode);
+          }
 
-      includeOptions.list = fieldType.typeOf || fieldType instanceof GraphQLList;
-      Node.appendArgs(includeOptions);
+          includeOptions.list = fieldType.typeOf || fieldType instanceof GraphQLList;
+          Node.appendArgs(includeOptions);
 
-      result[Node.name] = Node;
+          result[Node.name] = Node;
+        });
+      });
     }
+    return null;
+  })).then(() => {
+    return result;
   });
-
-  return result;
 }
