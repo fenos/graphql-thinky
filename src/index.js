@@ -2,7 +2,6 @@ import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
 import {nodeInterfaceMapper} from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
-import {upperFirst} from 'lodash';
 import Node from './node';
 
 const defaultOptions = {

@@ -147,10 +147,12 @@ export function buildQuery(seq, args, thinky) {
   args.relations = args.relations || {};
   let Query = seq;
 
-  // If "query" arg is not given, then
-  // we run the default query composition
-  if (typeof args.query !== 'function') {
-
+  // Developer can overwrite query per node
+  if (typeof args.query === 'function') {
+    Query = args.query(seq, args, thinky);
+  } else {
+    // If "query" arg is not given, then
+    // we run the default query composition
     if (_.isArray(args.attributes)) {
       Query = seq.withFields(args.attributes);
     } else if (_.isObject(args.attributes)) {
@@ -191,8 +193,6 @@ export function buildQuery(seq, args, thinky) {
     if (args.limit) {
       Query = Query.limit(parseInt(args.limit, 10));
     }
-  } else {
-    Query = args.query(seq,args,thinky);
   }
 
   const joinRelations = {};
