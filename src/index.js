@@ -1,7 +1,9 @@
 import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
+import ModelLoader from './dataloader/modelLoader';
 import {nodeInterfaceMapper} from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
+import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import Node from './node';
 
 const defaultOptions = {
@@ -32,6 +34,20 @@ class GraphqlThinky {
     this.nodeField = nodeMapper.nodeField;
     this.nodeInterface = nodeMapper.nodeInterface;
     this.nodeTypeMapper = nodeMapper.nodeTypeMapper;
+  }
+
+  /**
+   * Return Model loader
+   * object of all models
+   * @returns {*}
+   */
+  getModelLoaders() {
+    const models = this.thinky.models;
+    return Object.keys(models).reduce((loadersObj, modelName) => {
+      const modelLoader = new ModelLoader(models[modelName]);
+      loadersObj[modelName] = modelLoader;
+      return loadersObj;
+    },{});
   }
 
   /**
@@ -76,6 +92,27 @@ class GraphqlThinky {
       resolve: NodeConnector.resolve
     };
   };
+
+  /**
+   * Returns a connection definition
+   * based on a graphQL type.
+   * This is mostly a helper function
+   * when constructing connections based
+   * on dataloader.
+   * @param gqlType
+   * @param args
+   * @returns {{type, args: {}}}
+   */
+  connectTypeDefinition = (gqlType, args) => {
+    const {connectionType} = connectionDefinitions({nodeType: gqlType});
+    return {
+      type: connectionType,
+      args: {
+        ...connectionArgs,
+        ...args,
+      }
+    };
+  }
 
   /**
    * return a graphQL Object Type

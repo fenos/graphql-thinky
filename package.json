@@ -9,6 +9,7 @@
     "build": "rm -rf lib && BABEL_ENV=production babel src -d lib"
   },
   "dependencies": {
+    "dataloader": "^1.2.0",
     "graphql-relay": "^0.4.1",
     "lodash": "^4.0.0",
     "thinky-export-schema": "^2.0.0"
@@ -67,11 +68,24 @@
   "license": "MIT",
   "xo": {
     "esnext": true,
-    "ignore": ["example/**"],
+    "ignore": [
+      "example/**"
+    ],
     "rules": {
-      "xo/filename-case": ["error", {"case": "camelCase"}],
+      "xo/filename-case": [
+        "error",
+        {
+          "case": "camelCase"
+        }
+      ],
       "one-var": 0,
-      "indent": [2, 2, {"SwitchCase": 1}],
+      "indent": [
+        2,
+        2,
+        {
+          "SwitchCase": 1
+        }
+      ],
       "dot-notation": 0
     }
   }

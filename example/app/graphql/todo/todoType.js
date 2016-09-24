@@ -8,7 +8,10 @@ export default GraphQLThinky.createModelType('todo', {
   fields: () => ({
     user: {
       type: UserType,
-      resolve: resolve('todo','user')
+      resolve: (todo, args, { loaders }) => {
+        // console.log("TPP",todo);
+        return loaders.user.loadById(todo.user_id);
+      }
     }
   })
 });

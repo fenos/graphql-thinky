@@ -11,11 +11,12 @@
   "license": "MIT",
   "dependencies": {
     "body-parser": "^1.15.1",
+    "dataloader": "^1.2.0",
     "express": "^4.13.4",
     "express-graphql": "^0.5.1",
     "graphql": "^0.6.0",
     "graphql-relay": "^0.4.1",
-    "graphql-thinky": "0.1.7",
+    "graphql-thinky": "../src/index.js",
     "thinky": "^2.3.2"
   },
   "devDependencies": {

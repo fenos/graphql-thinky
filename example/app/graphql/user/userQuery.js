@@ -1,6 +1,7 @@
 import {
-    GraphQLList,
-    GraphQLString
+  GraphQLList,
+  GraphQLString,
+  GraphQLNonNull,
 } from 'graphql';
 
 import UserType from './userType';
@@ -19,16 +20,18 @@ export default {
       }
     },
     type: new GraphQLList(UserType),
-    resolve: resolve('user')
+    resolve: resolve('user'),
   },
   user: {
     type: UserType,
     args: {
-      id: {
-        type: GraphQLString
+      name: {
+        type: new GraphQLNonNull(GraphQLString)
       }
     },
-    resolve: resolve('user')
+    resolve: (_, { name }, { loaders }) => {
+      return loaders.user.loadBy('name', name);
+    }
   },
 
   /**

@@ -4,22 +4,28 @@ import expressGraphql from 'express-graphql';
 import schema from './app/graphql';
 import models from './app/models';
 import {bindLogger} from './app/thinky';
+import GT from './app/graphql/graphql-thinky';
 
 import data from './data.json';
 
 const app = express();
 
 app.use(bodyParser.json());
-app.use('/graphql',expressGraphql({
-  schema,
-  graphiql: true,
-  pretty: true,
-  formatError: error => {
-    console.error(error);
+app.use('/graphql',(req,res) => {
+  return expressGraphql({
+    schema,
+    graphiql: true,
+    pretty: true,
+    context: {
+      loaders: GT.getModelLoaders(),
+    },
+    formatError: error => {
+      console.error(error);
 
-    return error;
-  }
-}));
+      return error;
+    }
+  })(req,res);
+});
 
 app.listen(7000, async function() {
 

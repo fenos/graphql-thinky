@@ -10,4 +10,6 @@ User.relations = () => {
   User.hasMany(thinky.models.todo,'todos','id','user_id');
 }
 
+User.ensureIndex("name");
+
 export default User;
