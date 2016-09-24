@@ -1,5 +1,5 @@
 import Dataloader from 'dataloader';
-import {find, uniq} from 'lodash';
+import {find} from 'lodash';
 import LoaderFilter from './loaderFilter';
 
 /**
@@ -81,11 +81,12 @@ class ModelLoader {
     const checkLoader = this._getLoader(loaderName);
     if (checkLoader) {
       return checkLoader;
-    } else {
-      const newloaderName = `${this.modelName}:${loaderName}`;
-      const dataloaderFn = loaderFn || this._queryByField(fieldName);
-      return this._loaders[newloaderName] = new Dataloader(dataloaderFn);
     }
+    const newloaderName = `${this.modelName}:${loaderName}`;
+    const dataloaderFn = loaderFn || this._queryByField(fieldName);
+    const Loader = new Dataloader(dataloaderFn);
+    this._loaders[newloaderName] = Loader;
+    return Loader;
   }
 
   /**
@@ -95,14 +96,14 @@ class ModelLoader {
    * @private
    */
   _queryByField(fieldName) {
-    return (fieldNames) => {
+    return fieldNames => {
       const r = this.model._thinky.r;
       return this.model.getAll(r.args(fieldNames), {
         index: fieldName
       }).run().then(results => {
-        return this._mapResults(fieldNames,results,fieldName);
+        return this._mapResults(fieldNames, results, fieldName);
       });
-    }
+    };
   }
 
   /**
@@ -112,15 +113,15 @@ class ModelLoader {
    * @private
    */
   _queryRelations(relationName, fieldName) {
-    return (FkIds) => {
+    return FkIds => {
       const r = this.model._thinky.r;
-      const query = this.model.getAll(r.args(FkIds), { index: fieldName }).getJoin({
-        [relationName]: true,
+      const query = this.model.getAll(r.args(FkIds), {index: fieldName}).getJoin({
+        [relationName]: true
       });
       return query.run().then(results => {
-        return this._mapResults(FkIds,results,fieldName,relationName);
+        return this._mapResults(FkIds, results, fieldName, relationName);
       });
-    }
+    };
   }
 
   /**
@@ -134,7 +135,7 @@ class ModelLoader {
    */
   _mapResults(ids, results, fieldName, relationName) {
     return ids.map(fkId => {
-      const resultMatch = find(results, { [fieldName]: fkId });
+      const resultMatch = find(results, {[fieldName]: fkId});
       if (resultMatch) {
         if (relationName) {
           return resultMatch[relationName];

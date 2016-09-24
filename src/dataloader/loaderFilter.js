@@ -1,6 +1,6 @@
 import {chain} from 'lodash';
 import {
-  connectionFromArray,
+  connectionFromArray
 } from 'graphql-relay';
 
 class LoaderFilter {
@@ -11,7 +11,7 @@ class LoaderFilter {
       limit: 40,
       orderBy: {},
       filters: [],
-      paginate: null,
+      paginate: null
     };
   }
 
@@ -47,7 +47,7 @@ class LoaderFilter {
    */
   connection(args) {
     const results = this.resolve();
-    return connectionFromArray(results,args);
+    return connectionFromArray(results, args);
   }
 
   /**

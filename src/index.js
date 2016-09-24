@@ -1,9 +1,9 @@
+import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
 import ModelLoader from './dataloader/modelLoader';
 import {nodeInterfaceMapper} from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
-import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import Node from './node';
 
 const defaultOptions = {
@@ -47,7 +47,7 @@ class GraphqlThinky {
       const modelLoader = new ModelLoader(models[modelName]);
       loadersObj[modelName] = modelLoader;
       return loadersObj;
-    },{});
+    }, {});
   }
 
   /**
@@ -109,7 +109,7 @@ class GraphqlThinky {
       type: connectionType,
       args: {
         ...connectionArgs,
-        ...args,
+        ...args
       }
     };
   }
