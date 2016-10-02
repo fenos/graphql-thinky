@@ -1,8 +1,9 @@
-import {connectionDefinitions, connectionArgs} from 'graphql-relay';
+import { connectionDefinitions, connectionArgs } from 'graphql-relay';
 import resolver from './resolver';
-import typeMapper, {toGraphQLDefinition} from './typeMapper';
+import typeMapper, { toGraphQLDefinition } from './typeMapper';
 import ModelLoader from './dataloader/modelLoader';
-import {nodeInterfaceMapper} from './relay/nodeDefinition';
+import LoaderFiler from './dataloader/loaderFilter';
+import { nodeInterfaceMapper } from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
 import Node from './node';
 
@@ -28,6 +29,7 @@ class GraphqlThinky {
   constructor(thinky, options = {}) {
     this.thinky = thinky;
     this.options = Object.assign(defaultOptions, options);
+    this.loadersKey = options.loadersKey || 'loaders';
 
     const nodeMapper = nodeInterfaceMapper(thinky.models);
 
@@ -60,7 +62,7 @@ class GraphqlThinky {
    */
   resolve = (modelName, related, opts = {}) => {
     const Node = this.node(modelName, related);
-    return resolver(Node, {...this.options, ...opts});
+    return resolver(Node, { ...this.options, ...opts });
   };
 
   /**
@@ -71,23 +73,23 @@ class GraphqlThinky {
    * @param opts
    * @returns {Resolver}
    */
-  connect = (modelName, related, opts = {}) => {
+  connect = (modelName, related, {connection,args, ...opts} = {}) => {
     /*eslint-disable */
-    if (!opts.connection) throw Error('Please provide a connection option.');
-    if (!opts.connection.name) throw Error(`Please provide a name for the connection based on Model: ${modelName}.`);
-    if (!opts.connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
+    if (!connection) throw Error('Please provide a connection option.');
+    if (!connection.name) throw Error(`Please provide a name for the connection based on Model: ${modelName}.`);
+    if (!connection.type) throw Error(`Please provide a type for the connection based on Model: ${modelName}.`);
     /*eslint-enable */
 
     const NodeConnector = this.node(modelName, related, {
-      ...this.options,
-      ...opts
-    }).connect();
+      ...opts,
+      connection,
+    }).connect({...this.options, ...opts});
 
     return {
       type: NodeConnector.connectionType,
       args: {
         ...NodeConnector.connectionArgs,
-        ...opts.args || {}
+        ...args || {}
       },
       resolve: NodeConnector.resolve
     };
@@ -104,7 +106,7 @@ class GraphqlThinky {
    * @returns {{type, args: {}}}
    */
   connectTypeDefinition = (gqlType, args) => {
-    const {connectionType} = connectionDefinitions({nodeType: gqlType});
+    const { connectionType } = connectionDefinitions({ nodeType: gqlType });
     return {
       type: connectionType,
       args: {
@@ -112,6 +114,10 @@ class GraphqlThinky {
         ...args
       }
     };
+  }
+
+  shape = (result) => {
+    return new LoaderFiler(result);
   }
 
   /**
@@ -193,11 +199,12 @@ class GraphqlThinky {
     // Relation is specified as a string
     if (typeof related === 'string') {
       relation = modelTarget._joins[related];
+      relation.parentModelName = modelName;
 
       // relation not found can't continue
       if (!relation) {
         throw new Error(
-            `Tried to access relation ${related} of the Model ${modelName},
+          `Tried to access relation ${related} of the Model ${modelName},
              but relation not found.`
         );
       }
@@ -211,6 +218,7 @@ class GraphqlThinky {
       related: relation,
       thinky: this.thinky,
       query: opts.query,
+      loadersKey: this.loadersKey,
       connection: {
         ...connection
       }

@@ -2,6 +2,8 @@ import _ from 'lodash';
 import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import {GraphQLEnumType, GraphQLList} from 'graphql';
 import simplifyAST from '../simplifyAst';
+import LoaderFilter from '../dataloader/loaderFilter';
+import {NodeAttributes} from '../node';
 import {base64, unbase64} from './../base64.js';
 
 const cursorSeparator = '$',
@@ -106,7 +108,7 @@ function createEdgeInfo(resultset, limit, cursor) {
  * @param Node
  * @returns {{connectionType, edgeType, nodeType: *, resolveEdge: resolveEdge, connectionArgs: {orderBy: {type}}, resolve: resolver}}
  */
-export default Node => {
+export default (Node,resolveOpts) => {
   const connectionOpts = Node.connection,
     connectionName = connectionOpts.name,
     nodeType = connectionOpts.type,
@@ -152,58 +154,66 @@ export default Node => {
   // the resolver has to retrieve information from
   // rethink, then returning it with in the edges,node pattern.
   const $resolver = require('./../resolver').default(Node, {
+    ...resolveOpts,
     list: true,
     handleConnection: false,
     thinky: Node.thinky,
-    before: (options, args, context) => {
-      // We prepare to paginate the result set,
-      // because fist or last has been requested
+    before: (options:NodeAttributes,parent, args, context) => {
       if (args.first || args.last) {
-        options.limit = parseInt(args.first || args.last, 10);
-        options.count = true; // count result set
+        const offset = parseInt(args.first || args.last, 10);
 
-        if (args.after || args.before) {
+        if (options.count === undefined) {
+          options.count = true;
+        }
+
+        if (args.before || args.after) {
           const cursor = fromCursor(args.after || args.before);
           const startIndex = Number(cursor.index);
-
-          // Limitation we can't paginate 1 result at the time
-          if (startIndex > 0) {
-            options.offset = startIndex + 1;
-          }
+          options.offset = offset + startIndex;
+          options.index = startIndex;
+        } else {
+          options.offset = offset;
+          options.index = 0;
         }
       }
 
-      // attach the order into the composition
-      // stack
-      let order;
-      if (!args.orderBy) {
-        order = [orderByEnum._values[0].value];
-      } else if (typeof args.orderBy === 'string') {
-        order = [orderByEnum._nameLookup[args.orderBy].value];
-      } else {
-        order = args.orderBy;
-      }
-
-      const orderAttribute = order[0][0]; // Order Attribute
-      let orderDirection = order[0][1]; // Order Direction
-
-      // Depending on the direction requested
-      // we sort the result accordently
-      if (args.last) {
-        orderDirection = orderDirection === 'ASC' ? 'DESC' : 'ASC';
-      }
-
-      // Assign order
-      options.order = [
-        orderAttribute, orderDirection
-      ];
-
-      options.relations = [];
-      options.attributes = _.uniq(options.attributes);
+      //
+      // // attach the order into the composition
+      // // stack
+      // let order;
+      // if (!args.orderBy) {
+      //   order = [orderByEnum._values[0].value];
+      // } else if (typeof args.orderBy === 'string') {
+      //   order = [orderByEnum._nameLookup[args.orderBy].value];
+      // } else {
+      //   order = args.orderBy;
+      // }
+      //
+      // const orderAttribute = order[0][0]; // Order Attribute
+      // let orderDirection = order[0][1]; // Order Direction
+      //
+      // // Depending on the direction requested
+      // // we sort the result accordently
+      // if (args.last) {
+      //   orderDirection = orderDirection === 'ASC' ? 'DESC' : 'ASC';
+      // }
+      //
+      // // Assign order
+      // options.order = [
+      //   orderAttribute, orderDirection
+      // ];
+      //
+      // options.relations = [];
+      // options.attributes = _.uniq(options.attributes);
 
       return connectionOpts.before(options, args, root, context);
     },
-    after: (resultset, args, root, {source}) => {
+    after: (resultset, parent, args, root, {source}) => {
+
+      if (resultset instanceof LoaderFilter) {
+        resultset = resultset.toArray();
+      }
+
       let cursor = null;
 
       // Once we have the result set we decode the cursor
@@ -250,11 +260,6 @@ export default Node => {
       args
     };
   };
-
-  resolver.$Node = $resolver.$Node;
-  resolver.$before = $resolver.$before;
-  resolver.$after = $resolver.$after;
-  resolver.$options = $resolver.$options;
 
   return {
     connectionType,

@@ -18,11 +18,6 @@ app.use('/graphql',(req,res) => {
     pretty: true,
     context: {
       loaders: GT.getModelLoaders(),
-    },
-    formatError: error => {
-      console.error(error);
-
-      return error;
     }
   })(req,res);
 });
@@ -38,7 +33,7 @@ app.listen(7000, async function() {
     const userModel = new models.user(user);
     saved.push(userModel.saveAll({todos: true}));
   });
-  
+
   await Promise.all(saved);
 
   console.log("Graphql-thinky started on port: 7000");

@@ -3,6 +3,7 @@
     "es2015",
     "stage-0"
   ],
+  "plugins": ["syntax-flow","transform-flow-strip-types"],
   "env": {
     "development": {
       "sourceMaps": "inline"

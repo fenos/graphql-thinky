@@ -2,6 +2,7 @@ import {
   GraphQLList,
   GraphQLString,
   GraphQLNonNull,
+  GraphQLInt,
 } from 'graphql';
 
 import UserType from './userType';
@@ -17,6 +18,9 @@ export default {
     args: {
       name: {
         type: GraphQLString
+      },
+      offset: {
+        type: GraphQLInt
       }
     },
     type: new GraphQLList(UserType),
@@ -29,9 +33,7 @@ export default {
         type: new GraphQLNonNull(GraphQLString)
       }
     },
-    resolve: (_, { name }, { loaders }) => {
-      return loaders.user.loadBy('name', name);
-    }
+    resolve: resolve('user')
   },
 
   /**

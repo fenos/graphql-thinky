@@ -3,5 +3,6 @@ require("babel-polyfill");
 
 module.exports = {
   DB: require('./db').default,
-  graphql: require('./graphql').default
-}
+  graphql: require('./graphql').default,
+  loaders: require('./graphql/loaders').default
+};

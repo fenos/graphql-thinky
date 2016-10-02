@@ -1,18 +1,33 @@
-import {chain} from 'lodash';
+import { chain, isObject } from 'lodash';
 import {
   connectionFromArray
 } from 'graphql-relay';
+import { NodeAttributes } from './../node';
 
 class LoaderFilter {
 
-  constructor(results) {
+  constructor(results, filtering: NodeAttributes = {}) {
+
     this.results = results;
     this.filtering = {
       limit: 40,
       orderBy: {},
-      filters: [],
-      paginate: null
+      filter: {},
+      paginate: null,
+      ...filtering,
     };
+  }
+
+  toObject() {
+    if (isObject(this.results)) {
+      return this.results;
+    }
+    if (Array.isArray(this.results)) {
+      const result = this.toArray();
+      return result[0] || {};
+    }
+
+    throw new Error("Couldn't transform result to Object");
   }
 
   /**
@@ -20,23 +35,25 @@ class LoaderFilter {
    * applyed
    * @returns {Array|*}
    */
-  resolve() {
-    const {limit, orderBy, filters} = this.filtering;
-    let resultFiltered = chain(this.results);
+  toArray() {
+    let results;
+    if (!Array.isArray(this.results)) {
+      results = [this.results];
+    } else {
+      results = this.results;
+    }
+    const { index, offset, orderBy, filter } = this.filtering;
+    let resultFiltered = chain(results);
 
     if (Object.keys(orderBy).length > 0) {
       resultFiltered = resultFiltered.orderBy(orderBy);
     }
 
-    if (filters.length > 0) {
-      filters.forEach(filter => {
-        resultFiltered = resultFiltered.filter(filter);
-      });
+    if (Object.keys(filter).length > 0) {
+      resultFiltered = resultFiltered.filter(filter);
     }
 
-    if (limit) {
-      resultFiltered = resultFiltered.take(limit);
-    }
+    resultFiltered = resultFiltered.take(offset - index);
 
     return resultFiltered.value();
   }
@@ -45,8 +62,8 @@ class LoaderFilter {
    * Returned a connection from
    * array
    */
-  connection(args) {
-    const results = this.resolve();
+  toConnectionArray(args) {
+    const results = this.toArray();
     return connectionFromArray(results, args);
   }
 
@@ -75,8 +92,21 @@ class LoaderFilter {
    * @param filterDef
    */
   filter(filterDef) {
-    this.filtering.filters.push(filterDef);
+    this.filtering.filter = {
+      ...this.filtering.filter,
+      ...filterDef
+    };
     return this;
+  }
+
+  /**
+   * Filter if helper
+   * @param condition
+   * @param filter
+   * @returns {LoaderFilter}
+   */
+  filterIf(condition, filter) {
+    return this.if(condition, () => this.filter(filter));
   }
 
   /**
@@ -95,6 +125,24 @@ class LoaderFilter {
       fnEvaluation(this);
       return this;
     }
+    return this;
+  }
+
+  /**
+   * From node args
+   *
+   * @param args
+   * @returns {LoaderFilter}
+   */
+  fromNodeArgs(args) {
+    this.filter(args.filter);
+
+    this.if(args.order, () => {
+      this.orderBy.apply(this, args.order);
+    });
+
+    this.limit(args.limit);
+
     return this;
   }
 }

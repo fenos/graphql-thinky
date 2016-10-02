@@ -2,9 +2,11 @@ import {
   GraphQLSchema,
   GraphQLObjectType,
   GraphQLNonNull,
-  GraphQLList,
-    GraphQLString
+  GraphQLString,
+  graphql,
 } from 'graphql';
+
+import loaders from './loaders';
 
 /**
  *
@@ -121,9 +123,14 @@ export function tagType(fields, nodeInterface) {
   });
 }
 
+export function executeQuery(schema,query) {
+  return graphql(schema,query,null,{loaders});
+}
+
 export default {
   createSchema,
   userType,
   taskType,
-  tagType
+  tagType,
+  executeQuery
 }

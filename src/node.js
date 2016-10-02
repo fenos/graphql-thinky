@@ -1,22 +1,44 @@
 import assert from 'assert';
-import {buildQuery} from './queryBuilder';
-import {resolveConnection} from './relay';
+import { buildQuery,buildCount,mapCountToResultSet } from './queryBuilder';
+import { resolveConnection } from './relay';
+
+export type NodeAttributes = {
+  list: boolean,
+  filterQuery: boolean,
+  attributes: Array<string>,
+  filter: Object<FK,FV>,
+  skip?: number,
+  index?: number,
+  offset?: number,
+  order?: string,
+  count: boolean
+};
+
+export type NodeOptions = {
+  model: Object,
+  related: Object, // TODO
+  args: NodeAttributes,
+  connection: Object, // TODO
+  name: string,
+  query?: func<Promise>,
+  loadersKey: string,
+};
 
 /**
  * Node class
  */
 class Node {
 
-  constructor({model, tree = {}, related = undefined, args = {}, connection = {}, name = '', query = undefined}) {
+  constructor({ model, related = undefined, args = {}, connection = {}, name = '', query = undefined, loadersKey = 'loaders'}:NodeOptions) {
     assert(model, 'You need to provide a thinky Model');
 
     this.model = model;
     this.related = related;
-    this.tree = tree;
     this.args = args;
     this.connection = connection;
     this.name = name; // The name will be populated based to AST name if not provided
     this.query = query;
+    this.loadersKey = loadersKey;
   }
 
   /**
@@ -26,16 +48,32 @@ class Node {
    * @param thinky
    * @returns {*}
    */
-  async queryResolve(thinky) {
-    this.args.relations = this.tree;
+  async queryResolve() {
     this.args.query = this.query;
-    const Query = buildQuery(this.model, this.args, thinky);
 
     let queryResult;
 
     if (this.args.list) {
+      const Query = buildQuery(this.model, this.args, this.model._thinky);
       queryResult = await Query.run();
+      if (this.args.count) {
+        const queryCountResult = await buildCount(
+          this.model,
+          [],
+          null,
+          this.args
+        );
+
+        queryResult = queryResult.map(row => {
+          row.fullCount = queryCountResult;
+          return row;
+        });
+      }
     } else {
+      const Query = buildQuery(this.model, {
+        ...this.args,
+        offset: false,
+      }, this.model._thinky);
       queryResult = await Query.nth(0).default(null).run();
     }
 
@@ -48,9 +86,8 @@ class Node {
    * @param source
    * @returns {*}
    */
-  async resolve(source) {
+  fromParentSource(source) {
     const result = source[this.name];
-
     return result;
   }
 
@@ -59,13 +96,13 @@ class Node {
    *
    * @returns {{connectionType, edgeType, nodeType, resolveEdge, connectionArgs, resolve}|*}
    */
-  connect() {
+  connect(resolveOptions) {
     /*eslint-disable */
     if (!this.connection.name) throw new Error("Please specify a connection name, before call connect on a Node");
     if (!this.connection.type) throw new Error("Please specify a connection type, before call connect on a Node");
     /*eslint-enable */
 
-    return resolveConnection(this);
+    return resolveConnection(this,resolveOptions);
   }
 
   /**
@@ -75,71 +112,59 @@ class Node {
    * @param thinky
    * @returns {Array}
    */
-  async generateDataTree(treeSource, thinky) {
+  async resolve(treeSource, context) {
+    let result = treeSource;
+
     if (!this.isRelated()) {
-      treeSource = await this.queryResolve(thinky);
+      result = await this.queryResolve();
     } else if (this.isRelated() && treeSource) {
-      treeSource = await this.resolve(treeSource);
-    }
+      result = this.fromParentSource(treeSource);
 
-    return treeSource;
-  }
+      const loaders = context[this.loadersKey];
 
-  /**
-   * Set Relation Tree.
-   * the three is an array of nodes
-   *
-   * @param tree array
-   */
-  setTree(tree) {
-    this.tree = tree;
-  }
-
-  /**
-   * Append Nodes to tree
-   *
-   * @param Node
-   */
-  appendToTree(Node) {
-    this.tree = {...this.tree, ...Node};
-  }
-
-  /**
-   * Return the depth level
-   * of the tree
-   *
-   * @param object
-   * @param level
-   * @returns {*|number}
-   */
-  depthOfTree(object, level) {
-    // Returns an int of the deepest level of an object
-    level = level || 1;
-    object = object || this.tree;
-
-    let key;
-    for (key in object) {
-      if (!(object[key] instanceof Node)) {
-        continue;
+      if (!loaders) {
+        throw new Error(`
+          GraphQL-thinky couldn't find any loaders set into the context
+          with the key "${this.loadersKey}"
+        `);
       }
 
-      const nodeTree = object[key].getTree();
-      if (Object.keys(nodeTree).length > 0) {
-        level++;
-        level = this.depthOfTree(nodeTree, level);
+      if (!result && treeSource && loaders) {
+        result = this.resolveWithLoaders(treeSource, loaders);
       }
     }
 
-    return level;
+    return result;
   }
 
   /**
-   * Get tree
-   *
+   * Resolve with loaders
+   * @param treeSource
+   * @param loaders
    * @returns {*}
    */
-  getTree() {
-    return this.tree;
+  async resolveWithLoaders(treeSource, loaders) {
+    let result;
+    // Resolve with Loaders from the context
+    if (this.related.type === 'belongsTo') {
+      const FkJoin = this.related.leftKey;
+      result = await loaders[this.related.model._schema._model._name].loadById(treeSource[FkJoin]);
+    } else {
+      const FkJoin = this.related.leftKey;
+
+      result = await loaders[this.related.parentModelName]
+        .related(this.name, treeSource[FkJoin], this.args);
+    }
+
+    if (this.isConnection()) {
+      return result.fromNodeArgs(this.args);
+    }
+
+    if (this.args.list) {
+      return result.toArray();
+    } else {
+      return result.toObject(this.args);
+    }
   }
 
   /**
@@ -148,7 +173,7 @@ class Node {
    * @param args
    */
   appendArgs(args) {
-    this.args = {...this.args, ...args};
+    this.args = { ...this.args, ...args };
   }
 
   /**
@@ -184,7 +209,7 @@ class Node {
    * @return {string}
    */
   getModelName() {
-    return this.model.getTableName();
+    return this.model._schema._model._name;
   }
 }
 
