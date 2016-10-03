@@ -28,13 +28,10 @@ export default GraphQLThinky.createModelType('user', {
         },
       },
       type: new GraphQLList(TodoType),
-      resolve: resolve('user','todos', {
-        filterQuery: true,
-      })
+      resolve: resolve('user','todos')
     },
     todosConnection: {
       ...connect('user','todos', {
-        filterQuery: true,
         args: {
           completed: {
             type: GraphQLBoolean,

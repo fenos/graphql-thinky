@@ -1,6 +1,6 @@
 import thinkySchema from 'thinky-export-schema';
 import {ResolverOpts} from './resolver';
-import {isFunction,uniq,find} from 'lodash';
+import {isFunction,uniq,find,isArray,isObject} from 'lodash';
 
 /**
  * Args to find options
@@ -79,6 +79,13 @@ export function buildQuery(seq, args, thinky) {
   if (typeof args.query === 'function') {
     Query = args.query(seq, args, thinky);
   } else {
+
+    if (isArray(args.attributes)) {
+      Query = seq.withFields(args.attributes);
+    } else if (isObject(args.attributes)) {
+      Query = seq.withFields(args.attributes);
+    }
+
     if (args.filter && Object.keys(args.filter).length > 0) {
       Object.keys(args.filter).forEach(fieldName => {
         if (isFunction(args.filter[fieldName])) {
@@ -116,6 +123,7 @@ export function buildCount(model,relatedIds,FK,opts) {
   const thinky = model._thinky;
   const r = thinky.r;
   opts.offset = false;
+  opts.orderBy = false;
 
   if (relatedIds.length > 0 && FK) {
     let seq = model.getAll(r.args(uniq(relatedIds)),{index: FK})

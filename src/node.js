@@ -48,7 +48,7 @@ class Node {
    * @param thinky
    * @returns {*}
    */
-  async queryResolve() {
+  async queryResolve(loaders) {
     this.args.query = this.query;
 
     let queryResult;
@@ -56,6 +56,14 @@ class Node {
     if (this.args.list) {
       const Query = buildQuery(this.model, this.args, this.model._thinky);
       queryResult = await Query.run();
+
+      if (loaders) {
+        queryResult.forEach(row => {
+          loaders[this.getModelName()]._getOrCreateLoader('loadBy', 'id')
+            .prime(row.id,row);
+        });
+      }
+
       if (this.args.count) {
         const queryCountResult = await buildCount(
           this.model,
@@ -114,13 +122,12 @@ class Node {
    */
   async resolve(treeSource, context) {
     let result = treeSource;
+    const loaders = context[this.loadersKey];
 
     if (!this.isRelated()) {
-      result = await this.queryResolve();
+      result = await this.queryResolve(loaders);
     } else if (this.isRelated() && treeSource) {
       result = this.fromParentSource(treeSource);
-
-      const loaders = context[this.loadersKey];
 
       if (!loaders) {
         throw new Error(`
@@ -146,18 +153,13 @@ class Node {
   async resolveWithLoaders(treeSource, loaders) {
     let result;
     // Resolve with Loaders from the context
+    const FkJoin = this.related.leftKey;
+    this.args.attributes.push(FkJoin);
     if (this.related.type === 'belongsTo') {
-      const FkJoin = this.related.leftKey;
-      result = await loaders[this.related.model._schema._model._name].loadById(treeSource[FkJoin]);
+      result = await loaders[this.related.model.getTableName()].loadById(treeSource[FkJoin]);
     } else {
-      const FkJoin = this.related.leftKey;
-
       result = await loaders[this.related.parentModelName]
         .related(this.name, treeSource[FkJoin], this.args);
-    }
-
-    if (this.isConnection()) {
-      return result.fromNodeArgs(this.args);
     }
 
     if (this.args.list) {

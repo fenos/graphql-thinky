@@ -1,8 +1,6 @@
-import _ from 'lodash';
 import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import {GraphQLEnumType, GraphQLList} from 'graphql';
 import simplifyAST from '../simplifyAst';
-import LoaderFilter from '../dataloader/loaderFilter';
 import {NodeAttributes} from '../node';
 import {base64, unbase64} from './../base64.js';
 
@@ -54,13 +52,16 @@ function fromCursor(cursor) {
 function resolveEdge(item, index, queriedCursor, args = {}, source) {
   let startIndex = 0;
   if (queriedCursor) {
-    startIndex = Number(queriedCursor.index);
+    startIndex = parseInt(queriedCursor.index,10) + index;
+    if (startIndex === 0) {
+      startIndex = 1;
+    }
   }
   if (startIndex !== 0) {
     startIndex++;
   }
   return {
-    cursor: toCursor(item, index + startIndex),
+    cursor: toCursor(item, startIndex),
     node: item,
     source
   };
@@ -168,7 +169,7 @@ export default (Node,resolveOpts) => {
 
         if (args.before || args.after) {
           const cursor = fromCursor(args.after || args.before);
-          const startIndex = Number(cursor.index);
+          const startIndex = parseInt(cursor.index,10) + 1;
           options.offset = offset + startIndex;
           options.index = startIndex;
         } else {
@@ -177,42 +178,35 @@ export default (Node,resolveOpts) => {
         }
       }
 
-      //
-      // // attach the order into the composition
-      // // stack
-      // let order;
-      // if (!args.orderBy) {
-      //   order = [orderByEnum._values[0].value];
-      // } else if (typeof args.orderBy === 'string') {
-      //   order = [orderByEnum._nameLookup[args.orderBy].value];
-      // } else {
-      //   order = args.orderBy;
-      // }
-      //
-      // const orderAttribute = order[0][0]; // Order Attribute
-      // let orderDirection = order[0][1]; // Order Direction
-      //
-      // // Depending on the direction requested
-      // // we sort the result accordently
-      // if (args.last) {
-      //   orderDirection = orderDirection === 'ASC' ? 'DESC' : 'ASC';
-      // }
-      //
-      // // Assign order
-      // options.order = [
-      //   orderAttribute, orderDirection
-      // ];
-      //
-      // options.relations = [];
-      // options.attributes = _.uniq(options.attributes);
+
+      // attach the order into the composition
+      // stack
+      let order;
+      if (!args.orderBy) {
+        order = [orderByEnum._values[0].value];
+      } else if (typeof args.orderBy === 'string') {
+        order = [orderByEnum._nameLookup[args.orderBy].value];
+      } else {
+        order = args.orderBy;
+      }
+
+      const orderAttribute = order[0][0]; // Order Attribute
+      let orderDirection = order[0][1]; // Order Direction
+
+      // Depending on the direction requested
+      // we sort the result accordently
+      if (args.last) {
+        orderDirection = orderDirection === 'ASC' ? 'DESC' : 'ASC';
+      }
+
+      // Assign order
+      options.order = [
+        orderAttribute, orderDirection
+      ];
 
       return connectionOpts.before(options, args, root, context);
     },
     after: (resultset, parent, args, root, {source}) => {
-
-      if (resultset instanceof LoaderFilter) {
-        resultset = resultset.toArray();
-      }
 
       let cursor = null;
 

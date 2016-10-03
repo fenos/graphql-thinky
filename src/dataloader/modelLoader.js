@@ -152,7 +152,10 @@ class ModelLoader {
       });
 
       if (same.length > 0) {
-        return maxBy(same, 'offset');
+        const higherOffset = maxBy(same, 'offset');
+        const allAttributes = uniq(flatten(same.map(opts => opts.attributes)));
+        higherOffset.attributes = allAttributes;
+        return higherOffset;
       }
       return params;
     });

@@ -62,7 +62,7 @@ export default function resolver(Node, {before, after, ...opts}:ResolverOpts = {
 
     let nodeArgs:NodeAttributes = {
       list: Boolean(type instanceof GraphQLList || connection),
-      filterQuery: false,
+      filterQuery: true,
       attributes: [],
       filter: {},
       index: 0,
