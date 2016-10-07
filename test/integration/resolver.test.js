@@ -289,7 +289,7 @@ test.serial('should add filter to a nested query', async(t) => {
     model: DB.models.Task,
     related: {
       ...DB.models.User._joins.tasks,
-      parentModelName: 'User',
+      parentModelName: 'user',
     }
   });
 
@@ -470,7 +470,8 @@ test.serial('should allow for nested fetching', async(t) => {
     model: DB.models.Task,
     related: {
       ...DB.models.User._joins.tasks,
-      parentModelName: 'User'
+      parentModelName: 'user',
+      relationName: 'tasks'
     }
   });
 
@@ -538,7 +539,8 @@ test.serial('should allow for nested recursive fetching', async(t) => {
     model: Tag,
     related: {
       ...Task._joins.tags,
-      parentModelName: 'Task',
+      parentModelName: 'task',
+      relationName: 'tags'
     }
   });
 
@@ -546,7 +548,8 @@ test.serial('should allow for nested recursive fetching', async(t) => {
     model: Task,
     related: {
       ...User._joins.tasks,
-      parentModelName: 'User'
+      parentModelName: 'user',
+      relationName: 'tasks'
     }
   });
 
@@ -633,7 +636,8 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
     model: Tag,
     related: {
       ...Tag._joins.tasks,
-      parentModelName: 'Task',
+      parentModelName: 'task',
+      relationName: 'tags'
     }
   });
 
@@ -641,7 +645,8 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
     model: Task,
     related: {
       ...User._joins.tasks,
-      parentModelName: 'User'
+      parentModelName: 'user',
+      relationName: 'tasks'
     }
   });
 
@@ -649,7 +654,8 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
     model: Task,
     related: {
       ...Tag._joins.tasks,
-      parentModelName: 'Tag'
+      parentModelName: 'tag',
+      relationName: 'tasks'
     }
   });
 
@@ -759,7 +765,7 @@ test.serial("it should handle empty results", async(t) => {
   expect(result.data.users).to.be.empty;
 });
 
-test.serial.skip("it should fetch default attributes", async(t) => {
+test.serial("it should fetch default attributes", async(t) => {
 
   const UserModel = DB.models.User;
 
@@ -773,8 +779,7 @@ test.serial.skip("it should fetch default attributes", async(t) => {
     users: {
       type: new GraphQLList(userType),
       resolve: resolver(UserResolver, {
-        defaultAttributes: ['surname'],
-        thinky: DB.instance
+        requestedFields: ['surname'],
       })
     }
   });

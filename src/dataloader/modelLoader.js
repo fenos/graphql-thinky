@@ -13,7 +13,7 @@ class ModelLoader {
 
   constructor(model) {
     this.model = model;
-    this.modelName = model._schema._model._name;
+    this.modelName = model.getTableName();
     this._loaders = {};
   }
 
@@ -22,8 +22,8 @@ class ModelLoader {
    * @param modelId
    * @returns {IgnoredPaths|Object|*|void}
    */
-  loadById(modelId) {
-    return this._getOrCreateLoader('loadBy', 'id')
+  loadById(modelId:string):Promise<Array|Object> {
+    return this.getOrCreateLoader('loadBy', 'id')
       .load(modelId).then(results => {
         return new LoaderFilter(results);
       });
@@ -35,8 +35,8 @@ class ModelLoader {
    * @param value
    * @returns {IgnoredPaths|Object|*|void}
    */
-  loadBy(fieldName, value) {
-    return this._getOrCreateLoader('loadBy', fieldName)
+  loadBy(fieldName:string, value:string):Promise<Array|Object> {
+    return this.getOrCreateLoader('loadBy', fieldName)
       .load(value).then(results => {
         return new LoaderFilter(results);
       });
@@ -48,16 +48,16 @@ class ModelLoader {
    * @param FKID
    * @returns {IgnoredPaths|Object|*|void}
    */
-  async related(relationName, FKID, options:NodeAttributes) {
-    const params = this._batchParamsKeys(options);
+  async related(relationName:string, FKID:string, options:NodeAttributes):Promise<Array|Object> {
+    const params = this._queryLoaderIdFromParams(options);
 
-    const filterOpt = await this._getOrCreateLoader(
+    const filterOpt = await this.getOrCreateLoader(
       'query:id',
       relationName,
       this._queryRelationLoader,
     ).load(params);
 
-    return await this._getOrCreateLoader(
+    return await this.getOrCreateLoader(
       `relation:${JSON.stringify(filterOpt)}`,
       relationName,
       this._queryRelations(relationName, 'id', filterOpt),
@@ -73,21 +73,21 @@ class ModelLoader {
    * @param FKID
    * @returns {IgnoredPaths|Object|*|void}
    */
-  async relatedByField(relationName:string, fieldName:string, FKID:any, options:NodeAttributes) {
-    const params = this._batchParamsKeys(options);
+  async relatedByField(relationName:string, fieldName:string, FKID:any, options:NodeAttributes):Promise<Array|Object> {
+    const params = this._queryLoaderIdFromParams(options);
 
-    const filterOpt = await this._getOrCreateLoader(
+    const filterOpt = await this.getOrCreateLoader(
       `query:${fieldName}`,
       relationName,
       this._queryRelationLoader,
     ).load(params);
 
-    return this._getOrCreateLoader(
+    return this.getOrCreateLoader(
       `relation:${JSON.stringify(filterOpt)}`,
       relationName,
       this._queryRelations(relationName, fieldName)
     ).load(FKID).then(results => {
-      return new LoaderFilter(results);
+      return new LoaderFilter(results,options);
     });
   }
 
@@ -97,11 +97,10 @@ class ModelLoader {
    * @param fieldName
    * @param loaderFn
    * @returns {*}
-   * @private
    */
-  _getOrCreateLoader(loaderPrefix:string, fieldName:string, loaderFn?:func<Promise>, loaderOpt = {}) {
+  getOrCreateLoader(loaderPrefix:string, fieldName:string, loaderFn?:func<Promise>, loaderOpt = {}):Dataloader {
     const loaderName = `${loaderPrefix}:${fieldName}`;
-    const checkLoader = this._getLoader(loaderName);
+    const checkLoader = this.getLoader(loaderName);
     if (checkLoader) {
       return checkLoader;
     }
@@ -113,7 +112,9 @@ class ModelLoader {
   }
 
   /**
-   * Batch param keys
+   * Determine the key of
+   * the query Loader.
+   *
    * @param filterQuery
    * @param filter
    * @param attributes
@@ -121,11 +122,21 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _batchParamsKeys({filterQuery,filter,attributes, ...rest}:NodeAttributes) {
+  _queryLoaderIdFromParams({filterQuery,filter,attributes,requestedFields, ...rest}:NodeAttributes):NodeAttributes {
     if (filterQuery) {
+      // If the filterQuery flag is enabled
+      // then i let the filters included
+      // for the creation of the key loader
       rest.filter = filter;
-      rest.attributes = attributes;
+
+      if (requestedFields) {
+        rest.attributes = attributes;
+      }
     } else {
+      // Has been asked to don't execute any filter.
+      // As such i'm going to put the results into
+      // the dataloader that doesn't have filters.
+      // generating the key with empty filters
       rest.filter = {};
       rest.attributes = [];
     }
@@ -142,7 +153,8 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  async _queryRelationLoader(queryParams:Array<NodeAttributes>) {
+  async _queryRelationLoader(queryParams:Array<NodeAttributes>):func<Promise> {
+
     return queryParams.map(params => {
       const same = queryParams.filter(qp => {
         return (
@@ -167,7 +179,7 @@ class ModelLoader {
    * @returns {function(*=)}
    * @private
    */
-  _queryByField(fieldName) {
+  _queryByField(fieldName:string):func<Promise> {
     return fieldNames => {
       const r = this.model._thinky.r;
       return this.model.getAll(r.args(uniq(fieldNames)), {
@@ -184,7 +196,7 @@ class ModelLoader {
    * @returns {function(*)}
    * @private
    */
-  _queryRelations(relationName, fieldName, nodeOpts) {
+  _queryRelations(relationName:string, fieldName:string, nodeAttributes:NodeAttributes):Promise<Array> {
     return async FkIds => {
       const thinky = this.model._thinky;
       const r = thinky.r;
@@ -192,24 +204,24 @@ class ModelLoader {
         .withFields(fieldName).getJoin({
           [relationName]: {
             _apply(seq) {
-              return buildQuery(seq,nodeOpts,thinky);
+              return buildQuery(seq,nodeAttributes,thinky);
             }
           }
         });
       const results = await query.run();
-
       const resultSet = this._mapResults(FkIds, results, fieldName, relationName);
 
       // If we need to count result
       // I'll do another query
-      if (nodeOpts.count) {
+      if (nodeAttributes.count) {
         const relation = this.model._joins[relationName];
         const FK = relation.rightKey;
         const countResults = await this._countRelated(
           flatten(resultSet.map(row => row.map(innerRow => innerRow[FK]))),
           relationName,
-          nodeOpts,
+          nodeAttributes,
         );
+
         return mapCountToResultSet(resultSet,countResults,FK);
       }
 
@@ -225,7 +237,7 @@ class ModelLoader {
    * @returns {*|void|Promise}
    * @private
    */
-  _countRelated(relatedIds,relationName,opts) {
+  _countRelated(relatedIds:Array<string>,relationName:string,opts:NodeAttributes) {
     const relation = this.model._joins[relationName];
     const FK = relation.rightKey;
 
@@ -241,7 +253,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _mapResults(ids, results, fieldName, relationName) {
+  _mapResults(ids:Array<string>, results:Array<Object>, fieldName:string, relationName:string):Array<Object|Array> {
     return ids.map(fkId => {
       const resultMatch = find(results, { [fieldName]: fkId });
       if (resultMatch) {
@@ -260,7 +272,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _getLoader(loaderName) {
+  getLoader(loaderName):Dataloader|null {
     return this._loaders[`${this.modelName}:${loaderName}`];
   }
 
@@ -269,7 +281,7 @@ class ModelLoader {
    * @returns {{}|*}
    * @private
    */
-  _getLoaders() {
+  getLoaders():Object<K,Dataloader> {
     return this._loaders;
   }
 }

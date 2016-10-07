@@ -1,27 +1,44 @@
 import assert from 'assert';
-import { buildQuery,buildCount,mapCountToResultSet } from './queryBuilder';
-import { resolveConnection } from './relay';
+import {GraphQLObjectType} from 'graphql';
+import Dataloader from 'dataloader';
+import ModelLoader from './dataloader/modelLoader';
+import {buildQuery,buildCount} from './queryBuilder';
+import {resolveConnection} from './relay';
 
 export type NodeAttributes = {
   list: boolean,
-  filterQuery: boolean,
-  attributes: Array<string>,
-  filter: Object<FK,FV>,
+  filterQuery?: boolean,
+  requestedFields?: boolean|Array<string>,
+  attributes?: Array<string>,
+  filter?: Object<FK,FV>,
+  count: boolean,
   skip?: number,
   index?: number,
   offset?: number,
-  order?: string,
-  count: boolean
+  orderBy?: string,
+};
+
+export type RelationAttributes = {
+  model: Object,
+  parentModelName: string,
+  relationName: string,
+  leftKey: string,
+  rightKey: string,
+};
+
+export type ConnectionAttributes = {
+  name: string,
+  type: GraphQLObjectType
 };
 
 export type NodeOptions = {
   model: Object,
-  related: Object, // TODO
-  args: NodeAttributes,
-  connection: Object, // TODO
-  name: string,
-  query?: func<Promise>,
   loadersKey: string,
+  args: NodeAttributes,
+  connection?: ConnectionAttributes,
+  related?: RelationAttributes|undefined,
+  name: string,
+  query?: func,
 };
 
 /**
@@ -45,10 +62,9 @@ class Node {
    * Resolve node based
    * a rethinkDB query
    *
-   * @param thinky
    * @returns {*}
    */
-  async queryResolve(loaders) {
+  async queryResolve(loaders:Object<K,ModelLoader>):Promise<Array|Object> {
     this.args.query = this.query;
 
     let queryResult;
@@ -57,9 +73,12 @@ class Node {
       const Query = buildQuery(this.model, this.args, this.model._thinky);
       queryResult = await Query.run();
 
-      if (loaders) {
+      // If any loader are provided and there is no restriction
+      // on selecting fields I can safetly cache them into dataloader
+      // for subsequential calls
+      if (loaders && !this.args.requestedFields) {
         queryResult.forEach(row => {
-          loaders[this.getModelName()]._getOrCreateLoader('loadBy', 'id')
+          loaders[this.getModelName()].getOrCreateLoader('loadBy', 'id')
             .prime(row.id,row);
         });
       }
@@ -94,9 +113,8 @@ class Node {
    * @param source
    * @returns {*}
    */
-  fromParentSource(source) {
-    const result = source[this.name];
-    return result;
+  fromParentSource(source):any {
+    return source[this.name];
   }
 
   /**
@@ -104,7 +122,7 @@ class Node {
    *
    * @returns {{connectionType, edgeType, nodeType, resolveEdge, connectionArgs, resolve}|*}
    */
-  connect(resolveOptions) {
+  connect(resolveOptions:NodeAttributes) {
     /*eslint-disable */
     if (!this.connection.name) throw new Error("Please specify a connection name, before call connect on a Node");
     if (!this.connection.type) throw new Error("Please specify a connection type, before call connect on a Node");
@@ -114,16 +132,14 @@ class Node {
   }
 
   /**
-   * Generate data tree
-   *
+   * Resolve Node
    * @param treeSource
-   * @param thinky
-   * @returns {Array}
+   * @param context
+   * @returns {*}
    */
-  async resolve(treeSource, context) {
+  async resolve(treeSource, context):Promise<Array|Object> {
     let result = treeSource;
     const loaders = context[this.loadersKey];
-
     if (!this.isRelated()) {
       result = await this.queryResolve(loaders);
     } else if (this.isRelated() && treeSource) {
@@ -131,13 +147,13 @@ class Node {
 
       if (!loaders) {
         throw new Error(`
-          GraphQL-thinky couldn't find any loaders set into the context
+          GraphQL-thinky couldn't find any loaders set on the GraphQL context
           with the key "${this.loadersKey}"
         `);
       }
 
       if (!result && treeSource && loaders) {
-        result = this.resolveWithLoaders(treeSource, loaders);
+        result = await this.resolveWithLoaders(treeSource, loaders);
       }
     }
 
@@ -150,16 +166,34 @@ class Node {
    * @param loaders
    * @returns {*}
    */
-  async resolveWithLoaders(treeSource, loaders) {
+  async resolveWithLoaders(treeSource:Object, loaders:Object<string,Dataloader>) {
     let result;
     // Resolve with Loaders from the context
     const FkJoin = this.related.leftKey;
     this.args.attributes.push(FkJoin);
+
     if (this.related.type === 'belongsTo') {
-      result = await loaders[this.related.model.getTableName()].loadById(treeSource[FkJoin]);
+      const loaderName = this.related.model.getTableName();
+      const loader = loaders[loaderName];
+      if (!loader) {
+        throw new Error(`
+          Loader name "${loaderName}" Not Found for relation
+          when try to resolve relation ${this.related.relationName}
+          of the model ${this.getModelName()}
+       `);
+      }
+      result = await loader.loadById(treeSource[FkJoin]);
     } else {
+      const loaderName = this.related.parentModelName;
+      const loader = loaders[loaderName];
+      if (!loader) {
+        throw new Error(`
+          Loader name "${loaderName}" Not Found for relation
+          when try to resolve relation ${this.related.relationName}
+          of the model ${this.getModelName()}`);
+      }
       result = await loaders[this.related.parentModelName]
-        .related(this.name, treeSource[FkJoin], this.args);
+        .related(this.related.relationName, treeSource[FkJoin], this.args);
     }
 
     if (this.args.list) {
@@ -211,7 +245,7 @@ class Node {
    * @return {string}
    */
   getModelName() {
-    return this.model._schema._model._name;
+    return this.model.getTableName();
   }
 }
 

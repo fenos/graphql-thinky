@@ -50,18 +50,16 @@ function fromCursor(cursor) {
  * @returns {{cursor: *, node: *, source: *}}
  */
 function resolveEdge(item, index, queriedCursor, args = {}, source) {
-  let startIndex = 0;
   if (queriedCursor) {
-    startIndex = parseInt(queriedCursor.index,10) + index;
-    if (startIndex === 0) {
-      startIndex = 1;
+    index = parseInt(queriedCursor.index,10) + index ;
+    if (index === 0) {
+      index = 1;
+    } else {
+      index = index + 1;
     }
   }
-  if (startIndex !== 0) {
-    startIndex++;
-  }
   return {
-    cursor: toCursor(item, startIndex),
+    cursor: toCursor(item, index),
     node: item,
     source
   };
@@ -72,11 +70,12 @@ function resolveEdge(item, index, queriedCursor, args = {}, source) {
  * of an edge
  *
  * @param resultset
- * @param limit
+ * @param offset
  * @param cursor
  * @returns {{hasMorePages: boolean, hasPreviousPage: boolean}}
  */
-function createEdgeInfo(resultset, limit, cursor) {
+function createEdgeInfo(resultset, offset, index) {
+  const limit = offset - index;
   // retrieve full count from the first edge
   // or default 10
   let fullCount = resultset[0] &&
@@ -87,19 +86,17 @@ function createEdgeInfo(resultset, limit, cursor) {
     fullCount = 0;
   }
 
-  let hasMorePages = false;
+  let hasNextPage = false;
   let hasPreviousPage = false;
 
-  if (limit) {
-    const index = cursor ? Number(cursor.index) : 0;
-    const perPage = parseInt(limit, 10);
-    const requested = (index + 1) * perPage;
+  if (offset) {
+    const requested = (index + 1) * limit;
 
-    hasMorePages = requested < fullCount;
-    hasPreviousPage = (requested > perPage);
+    hasNextPage = requested < fullCount;
+    hasPreviousPage = (requested > limit);
   }
   return {
-    hasMorePages,
+    hasNextPage,
     hasPreviousPage
   };
 }
@@ -169,9 +166,10 @@ export default (Node,resolveOpts) => {
 
         if (args.before || args.after) {
           const cursor = fromCursor(args.after || args.before);
-          const startIndex = parseInt(cursor.index,10) + 1;
+          const startIndex = parseInt(cursor.index,10);
           options.offset = offset + startIndex;
           options.index = startIndex;
+
         } else {
           options.offset = offset;
           options.index = 0;
@@ -206,7 +204,7 @@ export default (Node,resolveOpts) => {
 
       return connectionOpts.before(options, args, root, context);
     },
-    after: (resultset, parent, args, root, {source}) => {
+    after: (resultset,{offset, index}, parent, args, root, {source}) => {
 
       let cursor = null;
 
@@ -218,14 +216,15 @@ export default (Node,resolveOpts) => {
 
       // create edges array
       const edges = resultset.map((value, idx) => {
+        // console.log("RESOLVE EDGE", idx);
         return resolveEdge(value, idx, cursor, args, source);
       });
 
       const firstEdge = edges[0],
         lastEdge = edges[edges.length - 1];
 
-      const edgeInfo = createEdgeInfo(resultset, args.first || args.last, cursor);
-      const {hasMorePages, hasPreviousPage} = edgeInfo;
+      const edgeInfo = createEdgeInfo(resultset, offset, index);
+      const {hasNextPage, hasPreviousPage} = edgeInfo;
 
       return {
         source,
@@ -235,7 +234,7 @@ export default (Node,resolveOpts) => {
           startCursor: firstEdge ? firstEdge.cursor : null,
           endCursor: lastEdge ? lastEdge.cursor : null,
           hasPreviousPage,
-          hasNextPage: hasMorePages
+          hasNextPage
         }
       };
     }

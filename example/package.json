@@ -16,7 +16,7 @@
     "express-graphql": "^0.5.1",
     "graphql": "^0.6.0",
     "graphql-relay": "^0.4.1",
-    "graphql-thinky": "../src/index.js",
+    "graphql-thinky": "0.4.0-beta-3",
     "thinky": "^2.3.2"
   },
   "devDependencies": {

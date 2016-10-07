@@ -1,15 +1,15 @@
 import { connectionDefinitions, connectionArgs } from 'graphql-relay';
 import resolver from './resolver';
-import typeMapper, { toGraphQLDefinition } from './typeMapper';
+import typeMapper, {toGraphQLDefinition} from './typeMapper';
 import ModelLoader from './dataloader/modelLoader';
 import LoaderFiler from './dataloader/loaderFilter';
 import { nodeInterfaceMapper } from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
-import Node from './node';
+import Node, {NodeAttributes} from './node';
+import commonArgs from './commonArgs';
 
 const defaultOptions = {
   maxLimit: 50,
-  nestingLimit: 10
 };
 
 /**
@@ -18,6 +18,8 @@ const defaultOptions = {
 class GraphqlThinky {
 
   static typeMapper = typeMapper;
+
+  commonArgs = commonArgs;
 
   /**
    * Graphus constructor accept a Thinky
@@ -60,7 +62,7 @@ class GraphqlThinky {
    * @param opts
    * @returns {Resolver}
    */
-  resolve = (modelName, related, opts = {}) => {
+  resolve = (modelName:string, related:string|undefined, opts:NodeAttributes = {}) => {
     const Node = this.node(modelName, related);
     return resolver(Node, { ...this.options, ...opts });
   };
@@ -199,7 +201,8 @@ class GraphqlThinky {
     // Relation is specified as a string
     if (typeof related === 'string') {
       relation = modelTarget._joins[related];
-      relation.parentModelName = modelName;
+      relation.relationName = related;
+      relation.parentModelName = modelTarget.getTableName();
 
       // relation not found can't continue
       if (!relation) {
@@ -211,12 +214,10 @@ class GraphqlThinky {
     }
 
     modelTarget = (relation) ? relation.model : modelTarget;
-
     return new Node({
       name: related || opts.name,
       model: modelTarget,
       related: relation,
-      thinky: this.thinky,
       query: opts.query,
       loadersKey: this.loadersKey,
       connection: {

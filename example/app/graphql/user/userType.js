@@ -28,7 +28,9 @@ export default GraphQLThinky.createModelType('user', {
         },
       },
       type: new GraphQLList(TodoType),
-      resolve: resolve('user','todos')
+      resolve: resolve('user','todos', {
+        filterQuery: true,
+      })
     },
     todosConnection: {
       ...connect('user','todos', {
@@ -37,9 +39,10 @@ export default GraphQLThinky.createModelType('user', {
             type: GraphQLBoolean,
           }
         },
+        filterQuery: false,
         connection: {
           name: 'UserTodo',
-          type: TodoType
+          type: TodoType,
         },
       })
     }
