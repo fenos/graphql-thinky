@@ -31,6 +31,10 @@ export function argsToFindOptions(args:Object,attributes:Object, model:Object, {
       }
 
       // Limit arg
+      if (key === 'limit' && args[key]) {
+        result.limit = parseInt(args[key], 10);
+      }
+
       if (key === 'offset' && args[key]) {
         result.offset = parseInt(args[key], 10);
       }
@@ -127,6 +131,10 @@ export function buildQuery(seq, args:NodeAttributes, thinky) {
 
     if (args.offset) {
       Query = Query.slice(args.index, args.offset);
+    }
+
+    if (args.limit) {
+      Query = Query.limit(args.limit);
     }
   }
 
