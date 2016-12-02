@@ -1,6 +1,6 @@
 {
   "name": "graphql-thinky",
-  "version": "0.4.0-beta-3",
+  "version": "0.4.0-rc-1",
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
   "repository": "https://github.com/fenos/graphql-thinky",
   "main": "lib/index.js",
