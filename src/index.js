@@ -5,7 +5,7 @@ import ModelLoader from './dataloader/modelLoader';
 import LoaderFiler from './dataloader/loaderFilter';
 import { nodeInterfaceMapper } from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
-import Node, {NodeAttributes} from './node';
+import Node from './node';
 import commonArgs from './commonArgs';
 
 const defaultOptions = {
@@ -62,7 +62,7 @@ class GraphqlThinky {
    * @param opts
    * @returns {Resolver}
    */
-  resolve = (modelName:string, related:string|undefined, opts:NodeAttributes = {}) => {
+  resolve = (modelName, related, opts = {}) => {
     const Node = this.node(modelName, related);
     return resolver(Node, { ...this.options, ...opts });
   };

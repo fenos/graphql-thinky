@@ -1,52 +1,13 @@
 import assert from 'assert';
-import {GraphQLObjectType} from 'graphql';
-import Dataloader from 'dataloader';
-import ModelLoader from './dataloader/modelLoader';
 import {buildQuery,buildCount} from './queryBuilder';
 import {resolveConnection} from './relay';
-
-export type NodeAttributes = {
-  list: boolean,
-  filterQuery?: boolean,
-  requestedFields?: boolean|Array<string>,
-  attributes?: Array<string>,
-  filter?: Object<FK,FV>,
-  count: boolean,
-  skip?: number,
-  index?: number,
-  offset?: number,
-  orderBy?: string,
-};
-
-export type RelationAttributes = {
-  model: Object,
-  parentModelName: string,
-  relationName: string,
-  leftKey: string,
-  rightKey: string,
-};
-
-export type ConnectionAttributes = {
-  name: string,
-  type: GraphQLObjectType
-};
-
-export type NodeOptions = {
-  model: Object,
-  loadersKey: string,
-  args: NodeAttributes,
-  connection?: ConnectionAttributes,
-  related?: RelationAttributes|undefined,
-  name: string,
-  query?: func,
-};
 
 /**
  * Node class
  */
 class Node {
 
-  constructor({ model, related = undefined, args = {}, connection = {}, name = '', query = undefined, loadersKey = 'loaders'}:NodeOptions) {
+  constructor({ model, related = undefined, args = {}, connection = {}, name = '', query = undefined, loadersKey = 'loaders'}) {
     assert(model, 'You need to provide a thinky Model');
 
     this.model = model;
@@ -64,7 +25,7 @@ class Node {
    *
    * @returns {*}
    */
-  async queryResolve(loaders:Object<K,ModelLoader>):Promise<Array|Object> {
+  async queryResolve(loaders) {
     this.args.query = this.query;
 
     let queryResult;
@@ -113,7 +74,7 @@ class Node {
    * @param source
    * @returns {*}
    */
-  fromParentSource(source):any {
+  fromParentSource(source) {
     return source[this.name];
   }
 
@@ -122,7 +83,7 @@ class Node {
    *
    * @returns {{connectionType, edgeType, nodeType, resolveEdge, connectionArgs, resolve}|*}
    */
-  connect(resolveOptions:NodeAttributes) {
+  connect(resolveOptions) {
     /*eslint-disable */
     if (!this.connection.name) throw new Error("Please specify a connection name, before call connect on a Node");
     if (!this.connection.type) throw new Error("Please specify a connection type, before call connect on a Node");
@@ -137,7 +98,7 @@ class Node {
    * @param context
    * @returns {*}
    */
-  async resolve(treeSource, context):Promise<Array|Object> {
+  async resolve(treeSource, context) {
     let result = treeSource;
     const loaders = context[this.loadersKey];
     if (!this.isRelated()) {
@@ -166,7 +127,7 @@ class Node {
    * @param loaders
    * @returns {*}
    */
-  async resolveWithLoaders(treeSource:Object, loaders:Object<string,Dataloader>) {
+  async resolveWithLoaders(treeSource, loaders) {
     let result;
     // Resolve with Loaders from the context
     const FkJoin = this.related.leftKey;

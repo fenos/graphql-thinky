@@ -2,18 +2,7 @@ import {uniq, extend} from 'lodash';
 import {GraphQLList} from 'graphql';
 import simplifyAST from './simplifyAst';
 import {argsToFindOptions} from './queryBuilder';
-import {NodeAttributes} from './node';
 import {isConnection, nodeAST, nodeType} from './relay';
-
-export type ResolverOpts = {
-  attributes?: Array<string>,
-  maxLimit?: number,
-  limit?: number,
-  list: boolean,
-  filter?: Object<FK,FV>,
-  before?: func<NodeAttributes>,
-  after?: func<any>,
-}
 
 /**
  *
@@ -21,7 +10,7 @@ export type ResolverOpts = {
  * @param opts
  * @returns {function(*=, *=, *=, *=)}
  */
-export default function resolver(Node, {before, after, ...opts}:ResolverOpts = {}) {
+export default function resolver(Node, {before, after, ...opts} = {}) {
   if (before === undefined) {
     before = async opts => opts;
   }
@@ -55,7 +44,7 @@ export default function resolver(Node, {before, after, ...opts}:ResolverOpts = {
       type = nodeType(type);
     }
 
-    const findOptions:NodeAttributes = argsToFindOptions(args,requestedFields, Model, opts);
+    const findOptions = argsToFindOptions(args,requestedFields, Model, opts);
 
     let nodeAttributes = extend({
       list: Boolean(type instanceof GraphQLList || connection),

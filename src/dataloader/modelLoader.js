@@ -1,6 +1,5 @@
 import Dataloader from 'dataloader';
 import { find, uniq, maxBy, groupBy, flatten } from 'lodash';
-import {NodeAttributes} from './../node';
 import {buildQuery,buildCount,mapCountToResultSet} from '../queryBuilder';
 import LoaderFilter from './loaderFilter';
 
@@ -22,7 +21,7 @@ class ModelLoader {
    * @param modelId
    * @returns {IgnoredPaths|Object|*|void}
    */
-  loadById(modelId:string):Promise<Array|Object> {
+  loadById(modelId) {
     return this.getOrCreateLoader('loadBy', 'id')
       .load(modelId).then(results => {
         return new LoaderFilter(results);
@@ -35,7 +34,7 @@ class ModelLoader {
    * @param value
    * @returns {IgnoredPaths|Object|*|void}
    */
-  loadBy(fieldName:string, value:string):Promise<Array|Object> {
+  loadBy(fieldName, value) {
     return this.getOrCreateLoader('loadBy', fieldName)
       .load(value).then(results => {
         return new LoaderFilter(results);
@@ -48,7 +47,7 @@ class ModelLoader {
    * @param FKID
    * @returns {IgnoredPaths|Object|*|void}
    */
-  async related(relationName:string, FKID:string, options:NodeAttributes):Promise<Array|Object> {
+  async related(relationName, FKID, options) {
     const params = this._queryLoaderIdFromParams(options);
 
     const filterOpt = await this.getOrCreateLoader(
@@ -73,7 +72,7 @@ class ModelLoader {
    * @param FKID
    * @returns {IgnoredPaths|Object|*|void}
    */
-  async relatedByField(relationName:string, fieldName:string, FKID:any, options:NodeAttributes):Promise<Array|Object> {
+  async relatedByField(relationName, fieldName, FKID, options) {
     const params = this._queryLoaderIdFromParams(options);
 
     const filterOpt = await this.getOrCreateLoader(
@@ -98,7 +97,7 @@ class ModelLoader {
    * @param loaderFn
    * @returns {*}
    */
-  getOrCreateLoader(loaderPrefix:string, fieldName:string, loaderFn?:func<Promise>, loaderOpt = {}):Dataloader {
+  getOrCreateLoader(loaderPrefix, fieldName, loaderFn, loaderOpt = {}) {
     const loaderName = `${loaderPrefix}:${fieldName}`;
     const checkLoader = this.getLoader(loaderName);
     if (checkLoader) {
@@ -122,7 +121,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _queryLoaderIdFromParams({filterQuery,filter,attributes,requestedFields, ...rest}:NodeAttributes):NodeAttributes {
+  _queryLoaderIdFromParams({filterQuery,filter,attributes,requestedFields, ...rest}) {
     if (filterQuery) {
       // If the filterQuery flag is enabled
       // then i let the filters included
@@ -153,7 +152,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  async _queryRelationLoader(queryParams:Array<NodeAttributes>):func<Promise> {
+  async _queryRelationLoader(queryParams) {
 
     return queryParams.map(params => {
       const same = queryParams.filter(qp => {
@@ -179,7 +178,7 @@ class ModelLoader {
    * @returns {function(*=)}
    * @private
    */
-  _queryByField(fieldName:string):func<Promise> {
+  _queryByField(fieldName) {
     return fieldNames => {
       const r = this.model._thinky.r;
       return this.model.getAll(r.args(uniq(fieldNames)), {
@@ -196,7 +195,7 @@ class ModelLoader {
    * @returns {function(*)}
    * @private
    */
-  _queryRelations(relationName:string, fieldName:string, nodeAttributes:NodeAttributes):Promise<Array> {
+  _queryRelations(relationName, fieldName, nodeAttributes) {
     return async FkIds => {
       const thinky = this.model._thinky;
       const r = thinky.r;
@@ -237,7 +236,7 @@ class ModelLoader {
    * @returns {*|void|Promise}
    * @private
    */
-  _countRelated(relatedIds:Array<string>,relationName:string,opts:NodeAttributes) {
+  _countRelated(relatedIds,relationName,opts) {
     const relation = this.model._joins[relationName];
     const FK = relation.rightKey;
 
@@ -253,7 +252,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _mapResults(ids:Array<string>, results:Array<Object>, fieldName:string, relationName:string):Array<Object|Array> {
+  _mapResults(ids, results, fieldName, relationName) {
     return ids.map(fkId => {
       const resultMatch = find(results, { [fieldName]: fkId });
       if (resultMatch) {
@@ -272,7 +271,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  getLoader(loaderName):Dataloader|null {
+  getLoader(loaderName) {
     return this._loaders[`${this.modelName}:${loaderName}`];
   }
 
@@ -281,7 +280,7 @@ class ModelLoader {
    * @returns {{}|*}
    * @private
    */
-  getLoaders():Object<K,Dataloader> {
+  getLoaders() {
     return this._loaders;
   }
 }

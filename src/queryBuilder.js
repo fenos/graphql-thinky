@@ -1,5 +1,4 @@
 import thinkySchema from 'thinky-export-schema';
-import {ResolverOpts} from './resolver';
 import {NodeAttributes} from './node';
 import {isFunction,uniq,find,isObject} from 'lodash';
 
@@ -11,7 +10,7 @@ import {isFunction,uniq,find,isObject} from 'lodash';
  * @param opts
  * @returns {{}}
  */
-export function argsToFindOptions(args:Object,attributes:Object, model:Object, {maxLimit, requestedFields}:ResolverOpts = {maxLimit: 50}) {
+export function argsToFindOptions(args,attributes, model, {maxLimit, requestedFields} = {maxLimit: 50}) {
   const result = {
       filter: {},
       attributes: [],
@@ -86,7 +85,7 @@ export function argsToFindOptions(args:Object,attributes:Object, model:Object, {
  * @param options
  * @returns {*}
  */
-export function buildQuery(seq, args:NodeAttributes, thinky) {
+export function buildQuery(seq, args, thinky) {
   let Query = seq;
 
   // Developer can overwrite query per node
@@ -141,7 +140,7 @@ export function buildQuery(seq, args:NodeAttributes, thinky) {
  * @param opts
  * @returns {*|void|Promise}
  */
-export function buildCount(model,relatedIds:Array<string>,FK:string,opts:NodeAttributes) {
+export function buildCount(model,relatedIds,FK,opts) {
   const thinky = model._thinky;
   const r = thinky.r;
   opts.offset = false;

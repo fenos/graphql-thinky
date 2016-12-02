@@ -1,7 +1,6 @@
 import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import {GraphQLEnumType, GraphQLList} from 'graphql';
 import simplifyAST from '../simplifyAst';
-import {NodeAttributes} from '../node';
 import {base64, unbase64} from './../base64.js';
 
 const cursorSeparator = '$',
@@ -156,7 +155,7 @@ export default (Node,resolveOpts) => {
     list: true,
     handleConnection: false,
     thinky: Node.thinky,
-    before: (options:NodeAttributes,parent, args, context) => {
+    before: (options,parent, args, context) => {
       if (args.first || args.last) {
         const offset = parseInt(args.first || args.last, 10);
 

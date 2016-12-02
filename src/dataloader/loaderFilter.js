@@ -6,7 +6,7 @@ import { NodeAttributes } from './../node';
 
 class LoaderFilter {
 
-  constructor(results:Array|Object, filtering?: NodeAttributes = {}|undefined) {
+  constructor(results, filtering = {}) {
 
     this.results = results;
     this.filtering = {
@@ -61,7 +61,7 @@ class LoaderFilter {
    * Returned a connection from
    * array
    */
-  toConnectionArray(args:Object):Object {
+  toConnectionArray(args) {
     const results = this.toArray();
     return connectionFromArray(results, args);
   }
@@ -71,7 +71,7 @@ class LoaderFilter {
    * @param limit
    * @returns {LoaderFilter}
    */
-  limit(limit):this {
+  limit(limit) {
     this.filtering.limit = limit || this.filtering.limit;
     return this;
   }
@@ -81,7 +81,7 @@ class LoaderFilter {
    * @param field
    * @param direction
    */
-  orderBy(field:string, direction:string) {
+  orderBy(field, direction) {
     this.filtering.orderBy[field] = direction;
     return this;
   }
@@ -90,7 +90,7 @@ class LoaderFilter {
    *
    * @param filterDef
    */
-  filter(filterDef:Object):this {
+  filter(filterDef) {
     this.filtering.filter = {
       ...this.filtering.filter,
       ...filterDef
@@ -104,7 +104,7 @@ class LoaderFilter {
    * @param filter
    * @returns {LoaderFilter}
    */
-  filterIf(condition:boolean, filter:Object):this {
+  filterIf(condition, filter) {
     return this.when(condition, () => this.filter(filter));
   }
 
@@ -119,7 +119,7 @@ class LoaderFilter {
    * @param fnEvaluation
    * @returns {LoaderFilter}
    */
-  when(value:any, fnEvaluation:func) {
+  when(value, fnEvaluation) {
     if (value !== undefined) {
       fnEvaluation(this);
       return this;
@@ -133,7 +133,7 @@ class LoaderFilter {
    * @param args
    * @returns {LoaderFilter}
    */
-  fromNodeArgs(args:NodeAttributes) {
+  fromNodeArgs(args) {
     this.filter(args.filter);
 
     this.when(args.orderBy, () => {
