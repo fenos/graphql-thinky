@@ -23,7 +23,7 @@ export default {
         type: GraphQLInt
       }
     },
-    type: new GraphQLList(UserType),
+    type: new GraphQLNonNull(new GraphQLList(UserType)),
     resolve: resolve('user'),
   },
   user: {
