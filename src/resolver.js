@@ -1,8 +1,27 @@
 import {uniq, extend} from 'lodash';
-import {GraphQLList} from 'graphql';
+import {GraphQLList, GraphQLNonNull} from 'graphql';
 import simplifyAST from './simplifyAst';
 import {argsToFindOptions} from './queryBuilder';
 import {isConnection, nodeAST, nodeType} from './relay';
+
+/**
+ * Determine if the GQL node is a list
+ * @param gqlTye
+ * @returns {*}
+ * @private
+ */
+function _isList(gqlTye) {
+  if (gqlTye instanceof GraphQLList) {
+    return true;
+  }
+
+  if (gqlTye instanceof GraphQLNonNull) {
+    return _isList(gqlTye.ofType);
+    return true;
+  }
+
+  return false;
+}
 
 /**
  *
@@ -47,7 +66,7 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
     const findOptions = argsToFindOptions(args,requestedFields, Model, opts);
 
     let nodeAttributes = extend({
-      list: Boolean(type instanceof GraphQLList || connection),
+      list: connection || _isList(type),
       filterQuery: true,
       requestedFields: false,
       attributes: [],
