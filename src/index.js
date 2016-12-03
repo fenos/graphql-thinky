@@ -201,8 +201,6 @@ class GraphqlThinky {
     // Relation is specified as a string
     if (typeof related === 'string') {
       relation = modelTarget._joins[related];
-      relation.relationName = related;
-      relation.parentModelName = modelTarget.getTableName();
 
       // relation not found can't continue
       if (!relation) {
@@ -211,6 +209,9 @@ class GraphqlThinky {
              but relation not found.`
         );
       }
+
+      relation.relationName = related;
+      relation.parentModelName = modelTarget.getTableName();
     }
 
     modelTarget = (relation) ? relation.model : modelTarget;
