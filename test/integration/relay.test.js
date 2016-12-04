@@ -49,7 +49,7 @@ test.beforeEach(async function(t) {
   return t.context.tasks = await DB.models.Task.save(tasks);
 });
 
-test.afterEach(async (t) => {
+test.afterEach.always(async (t) => {
   return await DB.clearDB();
 });
 
@@ -59,10 +59,6 @@ test.after('cleanup' ,async function() {
 });
 
 test.serial('should return a list Of edges and nodes', async (t) => {
-
-  const User = new Node({
-    model: DB.models.User
-  });
 
   const userType = Graph.userType();
 
@@ -87,7 +83,7 @@ test.serial('should return a list Of edges and nodes', async (t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
           edges {
@@ -123,7 +119,11 @@ test.serial('should limit a connection of results', async (t) => {
 
   const TaskConnector = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks',
+    },
     connection: {
       name: 'UserTaskConnection',
       type: Graph.taskType()
@@ -147,7 +147,7 @@ test.serial('should limit a connection of results', async (t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
           name
@@ -181,7 +181,8 @@ test.serial('should paginate a connection of results', async (t) => {
   const user = _.sample(t.context.users);
 
   // 4 tasks for the user
-  [1,2].forEach((_,key) => {
+  await DB.models.Task.delete().run();
+  [1,2,3,4].forEach((_,key) => {
     tasks.push({title: 'My task'+key, description: 'My duty'+key, assignee_id: user.id});
   });
 
@@ -193,7 +194,11 @@ test.serial('should paginate a connection of results', async (t) => {
 
   const TaskConnector = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks',
+    },
     connection: {
       name: 'UserTaskConnection',
       type: Graph.taskType()
@@ -222,7 +227,7 @@ test.serial('should paginate a connection of results', async (t) => {
     }
   });
 
-  const firstDataSet = await graphql(schema, `
+  const firstDataSet = await Graph.executeQuery(schema, `
       {
         user (id: "${user.id}") {
           name
@@ -253,7 +258,7 @@ test.serial('should paginate a connection of results', async (t) => {
   const lastTaskIndex = firstDataSet.data.user.tasks.edges.length - 1;
   const cusor         = firstDataSet.data.user.tasks.edges[lastTaskIndex].cursor;
 
-  const secondDataSet = await graphql(schema, `
+  const secondDataSet = await Graph.executeQuery(schema, `
       {
         user (id: "${user.id}") {
           name
@@ -288,7 +293,8 @@ test.serial('should paginate a connection of results, asserting page info based 
   const user = _.sample(t.context.users);
 
   // 4 tasks for the user
-  [1,2,3,4].forEach((_,key) => {
+  await DB.models.Task.delete().run();
+  [1,2,3,4,5,6].forEach((_,key) => {
     tasks.push({title: 'My task'+key, description: 'My duty'+key, assignee_id: user.id});
   });
 
@@ -299,9 +305,12 @@ test.serial('should paginate a connection of results, asserting page info based 
   });
 
   const TaskConnector = new Node({
-    name: 'tasks',
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks'
+    },
     connection: {
       name: 'UserTaskConnection',
       type: Graph.taskType()
@@ -330,7 +339,7 @@ test.serial('should paginate a connection of results, asserting page info based 
     }
   });
 
-  const firstDataSet = await graphql(schema, `
+  const firstDataSet = await Graph.executeQuery(schema, `
       {
         user (id: "${user.id}") {
           name
@@ -362,7 +371,7 @@ test.serial('should paginate a connection of results, asserting page info based 
   let lastTaskIndex = firstDataSet.data.user.tasks.edges.length - 1;
   let cusor         = firstDataSet.data.user.tasks.edges[lastTaskIndex].cursor;
 
-  const secondDataSet = await graphql(schema, `
+  const secondDataSet = await Graph.executeQuery(schema, `
       {
         user (id: "${user.id}") {
           name
@@ -394,7 +403,7 @@ test.serial('should paginate a connection of results, asserting page info based 
   lastTaskIndex = secondDataSet.data.user.tasks.edges.length - 1;
   cusor         = secondDataSet.data.user.tasks.edges[lastTaskIndex].cursor;
 
-  const thridDataSet = await graphql(schema, `
+  const thridDataSet = await Graph.executeQuery(schema, `
       {
         user (id: "${user.id}") {
           name
@@ -437,7 +446,11 @@ test.serial('should order a connection of results', async (t) => {
 
   const TaskConnector = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks',
+    },
     connection: {
       name: 'UserTaskConnection',
       type: Graph.taskType(),
@@ -478,7 +491,7 @@ test.serial('should order a connection of results', async (t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         user(id: "${user.id}") {
           name
@@ -519,7 +532,11 @@ test.serial('should filter a connection of results', async (t) => {
 
   const TaskConnector = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks',
+    },
     thinky: DB.instance,
     connection: {
       name: 'UserTaskConnection',
@@ -561,7 +578,7 @@ test.serial('should filter a connection of results', async (t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         user(id: "${user.id}") {
           name
@@ -598,7 +615,11 @@ test.serial('allow to list 2 connections', async (t) => {
 
   const TaskConnector = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks,
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks',
+    },
     thinky: DB.instance,
     connection: {
       name: 'UserTaskConnection',
@@ -635,7 +656,7 @@ test.serial('allow to list 2 connections', async (t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
           edges {

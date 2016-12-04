@@ -51,7 +51,7 @@ export function typeResolver(nodeTypeMapper) {
   return obj => {
     const type = obj.__graphqlType__ ||
     (typeof obj.getModel === 'function') ?
-        obj.getModel()._schema._model._name : obj.name;
+        obj.getModel().getModelName() : obj.name;
 
     if (!type) {
       throw new Error(`Unable to determine type of ${typeof obj}. ` +

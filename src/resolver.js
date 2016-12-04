@@ -1,30 +1,42 @@
-import _ from 'lodash';
-import thinkySchema from 'thinky-export-schema';
-import {GraphQLList} from 'graphql';
+import {extend} from 'lodash';
+import {GraphQLList, GraphQLNonNull} from 'graphql';
 import simplifyAST from './simplifyAst';
-import generateTree from './generateTree';
 import {argsToFindOptions} from './queryBuilder';
 import {isConnection, nodeAST, nodeType} from './relay';
 
 /**
- * Resolver Constructor
+ * Determine if the GQL node is a list
+ * @param gqlTye
+ * @returns {*}
+ * @private
+ */
+function _isList(gqlTye) {
+  if (gqlTye instanceof GraphQLList) {
+    return true;
+  }
+
+  if (gqlTye instanceof GraphQLNonNull) {
+    return _isList(gqlTye.ofType);
+  }
+
+  return false;
+}
+
+/**
  *
  * @param Node
  * @param opts
- * @returns {Resolver}
+ * @returns {function(*=, *=, *=, *=)}
  */
-export default function resolver(Node, opts = {}) {
-  if (opts.before === undefined) {
-    opts.before = async opts => opts;
+export default function resolver(Node, {before, after, ...opts} = {}) {
+  if (before === undefined) {
+    before = async opts => opts;
   }
-  if (opts.after === undefined) {
-    opts.after = async opts => opts;
+  if (after === undefined) {
+    after = async opts => opts;
   }
 
   const Model = Node.getModel();
-
-  const modelSchema = thinkySchema(Model);
-  const modelRelations = Object.keys(modelSchema.relationships);
 
   /**
    * Resolver GraphQL
@@ -39,84 +51,53 @@ export default function resolver(Node, opts = {}) {
     Node.name = Node.name || info.fieldName;
 
     let simplyAST = simplifyAST(info.fieldASTs[0], info);
-    const findOptions = argsToFindOptions(args, Model, {
-      maxLimit: opts.maxLimit
-    });
-
-    let nodeArgs = {
-      attributes: [],
-      list: true,
-      thinky: null,
-      filter: {},
-      limit: undefined,
-      skip: undefined,
-      order: undefined,
-      ...findOptions
-    };
-
-    let fields = simplyAST.fields;
+    let requestedFields = simplyAST.fields;
     let type = info.returnType;
 
-    if (isConnection(info.returnType)) {
+    const connection = isConnection(info.returnType);
+    if (connection) {
       simplyAST = nodeAST(simplyAST);
-      fields = simplyAST.fields;
+      requestedFields = simplyAST.fields;
       type = nodeType(type);
     }
 
-    nodeArgs = await opts.before(nodeArgs, args, context, {
+    const findOptions = argsToFindOptions(args, requestedFields, Model, opts);
+
+    let nodeAttributes = extend({
+      list: connection || _isList(type),
+      filterQuery: true,
+      requestedFields: false,
+      attributes: [],
+      filter: {},
+      index: 0,
+      offset: opts.maxLimit,
+      skip: undefined,
+      orderBy: undefined,
+      count: undefined,
+      ...findOptions
+    }, opts);
+
+    // Before Resolve is triggered, good for permission checks
+    // and manipulating query exec
+    nodeAttributes = await before(nodeAttributes, source, args, context, {
       ...info,
       ast: simplyAST,
       type,
       source
     });
 
-    nodeArgs.thinky = opts.thinky;
-    nodeArgs.list = opts.list || type instanceof GraphQLList;
-    nodeArgs.attributes = Object.keys(fields).filter(field => {
-      return (modelRelations.indexOf(field) === -1) &&
-          modelSchema.fields.hasOwnProperty(field) &&
-          modelSchema.fields[field] !== 'Virtual';
-    }).concat(['id']).concat(opts.defaultAttributes || []);
-
     type = type.ofType || type;
+    Node.appendArgs(nodeAttributes);
 
-    if (!Node.isRelated()) {
-      const tree = await generateTree(
-          simplyAST,
-          type,
-          context,
-          opts
-      );
+    const result = await Node.resolve(source, context || {});
 
-      Node.setTree(tree);
-
-      if (opts.nestingLimit && Node.depthOfTree() > parseInt(opts.nestingLimit, 10)) {
-        throw new Error('Nesting size not allowed');
-      }
-
-      Object.keys(tree).forEach(relationName => {
-        const relation = tree[relationName].related;
-        nodeArgs.attributes.push(relation.leftKey);
-      });
-    }
-
-    nodeArgs.attributes = _.uniq(nodeArgs.attributes);
-    Node.appendArgs(nodeArgs);
-
-    const result = await Node.generateDataTree(source, opts.thinky);
-
-    return await opts.after(result, args, context, {
+    return await after(result, nodeAttributes, source, args, context, {
       ...info,
       ast: simplyAST,
       type,
       source
     });
   };
-
-  Resolver.$Node = Node;
-  Resolver.$before = opts.before;
-  Resolver.$after = opts.after;
-  Resolver.$options = opts;
 
   return Resolver;
 }

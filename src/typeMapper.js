@@ -37,8 +37,7 @@ export function toGraphQLDefinition(thinkyModel, opts = {}) {
   opts.allowNull = (opts.allowNull === undefined) ? true : opts.allowNull;
 
   const modelSchema = thinkyModel._schema._schema,
-    modelDef = thinkyModel._schema._model,
-    modelName = modelDef._name;
+    modelName = thinkyModel.getTableName();
 
   // Generate the GraphQL Definition Object
   const graphQLDefinition = Object.keys(modelSchema).reduce((gqlDef, key) => {
@@ -53,7 +52,7 @@ export function toGraphQLDefinition(thinkyModel, opts = {}) {
     }
 
     const modelType = modelSchema[key];
-    const name = (type.isObject(modelType)) ? upperFirst(modelDef._name) + upperFirst(key) : key;
+    const name = (type.isObject(modelType)) ? upperFirst(modelName) + upperFirst(key) : key;
     const graphQLType = attributeToGraphQLType(modelType, name);
 
     if (graphQLType) {

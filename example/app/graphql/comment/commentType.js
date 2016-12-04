@@ -1,20 +1,19 @@
 import GraphQLThinky from '../graphql-thinky';
-import UserType from './../user/userType';
 import {
   GraphQLInt
 } from 'graphql';
-
+import PostType from '../post/postType';
 const { resolve } = GraphQLThinky;
 
-export default GraphQLThinky.createModelType('todo', {
+export default GraphQLThinky.createModelType('comment', {
   globalId: true,
   fields: () => ({
     fullCount: {
       type: GraphQLInt
     },
-    user: {
-      type: UserType,
-      resolve: resolve('todo','user')
+    post: {
+      type: PostType,
+      resolve: resolve('comment','post')
     }
   })
 });

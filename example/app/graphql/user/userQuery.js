@@ -1,6 +1,8 @@
 import {
-    GraphQLList,
-    GraphQLString
+  GraphQLList,
+  GraphQLString,
+  GraphQLNonNull,
+  GraphQLInt,
 } from 'graphql';
 
 import UserType from './userType';
@@ -16,16 +18,19 @@ export default {
     args: {
       name: {
         type: GraphQLString
+      },
+      offset: {
+        type: GraphQLInt
       }
     },
-    type: new GraphQLList(UserType),
-    resolve: resolve('user')
+    type: new GraphQLNonNull(new GraphQLList(UserType)),
+    resolve: resolve('user'),
   },
   user: {
     type: UserType,
     args: {
-      id: {
-        type: GraphQLString
+      name: {
+        type: new GraphQLNonNull(GraphQLString)
       }
     },
     resolve: resolve('user')

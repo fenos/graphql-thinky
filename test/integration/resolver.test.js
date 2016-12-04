@@ -218,7 +218,7 @@ test.serial('should limit results when limit arg is requested', async(t) => {
   const schema = Graph.createSchema({
     users: {
       args: {
-        limit: {
+        offset: {
           type: GraphQLInt
         }
       },
@@ -231,7 +231,7 @@ test.serial('should limit results when limit arg is requested', async(t) => {
 
   const result = await graphql(schema, `
       {
-        users(limit: 2) {
+        users(offset: 2) {
           id
           name
           username
@@ -287,7 +287,10 @@ test.serial('should add filter to a nested query', async(t) => {
 
   const TaskResolver = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+    }
   });
 
   const userType = Graph.userType({
@@ -309,7 +312,7 @@ test.serial('should add filter to a nested query', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
           id
@@ -352,7 +355,7 @@ test.serial('should order results by name ', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users(order: "name") {
           id
@@ -465,7 +468,11 @@ test.serial('should allow for nested fetching', async(t) => {
 
   const TaskResolver = new Node({
     model: DB.models.Task,
-    related: DB.models.User._joins.tasks
+    related: {
+      ...DB.models.User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks'
+    }
   });
 
   const userType = Graph.userType({
@@ -489,7 +496,7 @@ test.serial('should allow for nested fetching', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         user(id: "${user.id}") {
           name
@@ -530,12 +537,20 @@ test.serial('should allow for nested recursive fetching', async(t) => {
 
   const TagResolver = new Node({
     model: Tag,
-    related: Task._joins.tags
+    related: {
+      ...Task._joins.tags,
+      parentModelName: 'task',
+      relationName: 'tags'
+    }
   });
 
   const TaskResolver = new Node({
     model: Task,
-    related: User._joins.tasks
+    related: {
+      ...User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks'
+    }
   });
 
   const userType = Graph.userType({
@@ -569,7 +584,7 @@ test.serial('should allow for nested recursive fetching', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         user(id: "${user.id}") {
           name
@@ -619,17 +634,29 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
 
   const TagTaskResolver = new Node({
     model: Tag,
-    related: Task._joins.tags
+    related: {
+      ...Tag._joins.tasks,
+      parentModelName: 'task',
+      relationName: 'tags'
+    }
   });
 
   const UserTaskResolver = new Node({
     model: Task,
-    related: User._joins.tasks
+    related: {
+      ...User._joins.tasks,
+      parentModelName: 'user',
+      relationName: 'tasks'
+    }
   });
 
   const TaskTagResolver = new Node({
     model: Task,
-    related: Tag._joins.tasks
+    related: {
+      ...Tag._joins.tasks,
+      parentModelName: 'tag',
+      relationName: 'tasks'
+    }
   });
 
   let TaskType = Graph.taskType({
@@ -679,7 +706,7 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         user(id: "${user.id}") {
           name
@@ -694,7 +721,7 @@ test.serial('should allow for nested recursive fetching 3 level', async(t) => {
           }
         }
       }
-    `, null);
+    `);
 
   if (result.errors) throw new Error(result.errors[0].stack);
 
@@ -752,8 +779,7 @@ test.serial("it should fetch default attributes", async(t) => {
     users: {
       type: new GraphQLList(userType),
       resolve: resolver(UserResolver, {
-        defaultAttributes: ['surname'],
-        thinky: DB.instance
+        requestedFields: ['surname'],
       })
     }
   });
@@ -797,7 +823,7 @@ test.serial("it should not allow limiting result more then the default limit to 
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users(limit: 100000) {
           name
@@ -806,88 +832,6 @@ test.serial("it should not allow limiting result more then the default limit to 
     `, null);
 
   expect(result.data.users).to.have.lengthOf(2);
-});
-
-test.serial("it will set a nesting limit protection for our queries", async(t) => {
-
-  const tags = [];
-  t.context.tasks.forEach( (task, key) => {
-    const Tag = new DB.models.Tag({
-      name: 'tag' + key,
-      description: 'tag-n-' + key
-    });
-    task.tags = [Tag];
-    tags.push(task.saveAll({tags: true}));
-  });
-
-  await Promise.all(tags);
-
-  const User = DB.models.User;
-  const Task = DB.models.Task;
-  const Tag = DB.models.Tag;
-
-  const UserResolver = new Node({
-    model: User
-  });
-
-  const TagResolver = new Node({
-    model: Tag,
-    related: Task._joins.tags
-  });
-
-  const TaskResolver = new Node({
-    model: Task,
-    related: User._joins.tasks
-  });
-
-  const userType = Graph.userType({
-    tasks: {
-      type: new GraphQLList(Graph.taskType({
-        tags: {
-          type: new GraphQLList(Graph.tagType()),
-          resolve: resolver(TagResolver,{
-            before: (opts) => {
-              opts.order = ['name','ASC'];
-              return opts;
-            }
-          })
-        }
-      })),
-      resolve: resolver(TaskResolver)
-    }
-  });
-
-  const schema = Graph.createSchema({
-    user: {
-      type: userType,
-      resolve: resolver(UserResolver,{
-        nestingLimit: 1
-      }),
-      args: {
-        id: {
-          type: new GraphQLNonNull(GraphQLString)
-        }
-      }
-    }
-  });
-
-  const user = t.context.users[0];
-
-  const result = await graphql(schema, `
-      {
-        user(id: "${user.id}") {
-          name
-          tasks {
-            title
-            tags {
-              name
-            }
-          }
-        }
-      }
-    `, null);
-
-  expect(result.data.user).to.be.equal(null);
 });
 
 test.serial("it should allow to overwrite and compose a custom query on each Node", async(t) => {
@@ -930,17 +874,20 @@ test.serial("it should allow to overwrite and compose a custom query on each Nod
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
+          id
           name
           tasks {
+            id
             title
           }
         }
       }
     `, null);
-  
+
   expect(result.data.users).to.have.lengthOf(1);
-  expect(result.data.users[0].tasks).to.have.lengthOf(1);
+  expect(result.data.users[0].id).to.equal(user.id);
+  expect(result.data.users[0].tasks[0].id).to.equal(task.id);
 });

@@ -20,7 +20,7 @@ export default function (Model, options = {}) {
   });
 
   return new GraphQLObjectType({
-    name: _.upperFirst(Model._schema._model._name),
+    name: _.upperFirst(Model.getTableName()),
     fields: () => {
       const fieldDef = {
         ...GraphQLDefinition

@@ -11,4 +11,6 @@ Todo.relations = () => {
   Todo.belongsTo(thinky.models.user,'user','user_id','id');
 }
 
+Todo.ensureIndex("completed");
+
 export default Todo;

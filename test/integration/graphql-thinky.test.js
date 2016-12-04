@@ -59,13 +59,15 @@ test.serial('it resolve a list of users', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
-      {
-        users {
-         name
-        }
+  const result = await Graph.executeQuery(schema, `
+    {
+      users {
+       name
       }
-    `);
+    }
+  `);
+
+  if (result.errors) throw new Error(result.errors[0].stack);
 
   expect(result.data.users).to.have.lengthOf(t.context.users.length);
 
@@ -91,7 +93,7 @@ test.serial('it resolve a list of users with related tasks', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
          name
@@ -131,7 +133,7 @@ test.serial('it resolve a list of users with related tasks given ast name differ
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
       {
         users {
          name
@@ -170,7 +172,7 @@ test.serial('it resolve a connection of users', async(t) => {
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
     {
       users {
         edges {
@@ -198,14 +200,14 @@ test.serial('it resolve a connection of users and related connection tasks', asy
     tasksConnection: {
         ...connect('User','tasks', {
           connection: {
-            name: 'UserTaskConnection',
+            name: 'UserTask',
             type: taskType
           }
         })
     }
   });
 
-  const schema = Graph.createSchema({
+  const schema = await Graph.createSchema({
     usersConnection: {
       ...connect('User', null, {
         connection: {
@@ -216,7 +218,7 @@ test.serial('it resolve a connection of users and related connection tasks', asy
     }
   });
 
-  const result = await graphql(schema, `
+  const result = await Graph.executeQuery(schema, `
     {
       usersConnection {
         edges {

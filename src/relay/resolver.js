@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import {GraphQLEnumType, GraphQLList} from 'graphql';
 import simplifyAST from '../simplifyAst';
@@ -50,15 +49,16 @@ function fromCursor(cursor) {
  * @returns {{cursor: *, node: *, source: *}}
  */
 function resolveEdge(item, index, queriedCursor, args = {}, source) {
-  let startIndex = 0;
   if (queriedCursor) {
-    startIndex = Number(queriedCursor.index);
-  }
-  if (startIndex !== 0) {
-    startIndex++;
+    index = parseInt(queriedCursor.index, 10) + index;
+    if (index === 0) {
+      index = 1;
+    } else {
+      index++;
+    }
   }
   return {
-    cursor: toCursor(item, index + startIndex),
+    cursor: toCursor(item, index),
     node: item,
     source
   };
@@ -69,11 +69,12 @@ function resolveEdge(item, index, queriedCursor, args = {}, source) {
  * of an edge
  *
  * @param resultset
- * @param limit
+ * @param offset
  * @param cursor
  * @returns {{hasMorePages: boolean, hasPreviousPage: boolean}}
  */
-function createEdgeInfo(resultset, limit, cursor) {
+function createEdgeInfo(resultset, offset, index) {
+  const limit = offset - index;
   // retrieve full count from the first edge
   // or default 10
   let fullCount = resultset[0] &&
@@ -84,19 +85,17 @@ function createEdgeInfo(resultset, limit, cursor) {
     fullCount = 0;
   }
 
-  let hasMorePages = false;
+  let hasNextPage = false;
   let hasPreviousPage = false;
 
-  if (limit) {
-    const index = cursor ? Number(cursor.index) : 0;
-    const perPage = parseInt(limit, 10);
-    const requested = (index + 1) * perPage;
+  if (offset) {
+    const requested = (index + 1) * limit;
 
-    hasMorePages = requested < fullCount;
-    hasPreviousPage = (requested > perPage);
+    hasNextPage = requested < fullCount;
+    hasPreviousPage = (requested > limit);
   }
   return {
-    hasMorePages,
+    hasNextPage,
     hasPreviousPage
   };
 }
@@ -106,7 +105,7 @@ function createEdgeInfo(resultset, limit, cursor) {
  * @param Node
  * @returns {{connectionType, edgeType, nodeType: *, resolveEdge: resolveEdge, connectionArgs: {orderBy: {type}}, resolve: resolver}}
  */
-export default Node => {
+export default (Node, resolveOpts) => {
   const connectionOpts = Node.connection,
     connectionName = connectionOpts.name,
     nodeType = connectionOpts.type,
@@ -152,24 +151,26 @@ export default Node => {
   // the resolver has to retrieve information from
   // rethink, then returning it with in the edges,node pattern.
   const $resolver = require('./../resolver').default(Node, {
+    ...resolveOpts,
     list: true,
     handleConnection: false,
     thinky: Node.thinky,
-    before: (options, args, context) => {
-      // We prepare to paginate the result set,
-      // because fist or last has been requested
+    before: (options, parent, args, context) => {
       if (args.first || args.last) {
-        options.limit = parseInt(args.first || args.last, 10);
-        options.count = true; // count result set
+        const offset = parseInt(args.first || args.last, 10);
 
-        if (args.after || args.before) {
+        if (options.count === undefined) {
+          options.count = true;
+        }
+
+        if (args.before || args.after) {
           const cursor = fromCursor(args.after || args.before);
-          const startIndex = Number(cursor.index);
-
-          // Limitation we can't paginate 1 result at the time
-          if (startIndex > 0) {
-            options.offset = startIndex + 1;
-          }
+          const startIndex = parseInt(cursor.index, 10);
+          options.offset = offset + startIndex;
+          options.index = startIndex;
+        } else {
+          options.offset = offset;
+          options.index = 0;
         }
       }
 
@@ -198,12 +199,9 @@ export default Node => {
         orderAttribute, orderDirection
       ];
 
-      options.relations = [];
-      options.attributes = _.uniq(options.attributes);
-
       return connectionOpts.before(options, args, root, context);
     },
-    after: (resultset, args, root, {source}) => {
+    after: (resultset, {offset, index}, parent, args, root, {source}) => {
       let cursor = null;
 
       // Once we have the result set we decode the cursor
@@ -214,14 +212,15 @@ export default Node => {
 
       // create edges array
       const edges = resultset.map((value, idx) => {
+        // console.log("RESOLVE EDGE", idx);
         return resolveEdge(value, idx, cursor, args, source);
       });
 
       const firstEdge = edges[0],
         lastEdge = edges[edges.length - 1];
 
-      const edgeInfo = createEdgeInfo(resultset, args.first || args.last, cursor);
-      const {hasMorePages, hasPreviousPage} = edgeInfo;
+      const edgeInfo = createEdgeInfo(resultset, offset, index);
+      const {hasNextPage, hasPreviousPage} = edgeInfo;
 
       return {
         source,
@@ -231,7 +230,7 @@ export default Node => {
           startCursor: firstEdge ? firstEdge.cursor : null,
           endCursor: lastEdge ? lastEdge.cursor : null,
           hasPreviousPage,
-          hasNextPage: hasMorePages
+          hasNextPage
         }
       };
     }
@@ -250,11 +249,6 @@ export default Node => {
       args
     };
   };
-
-  resolver.$Node = $resolver.$Node;
-  resolver.$before = $resolver.$before;
-  resolver.$after = $resolver.$after;
-  resolver.$options = $resolver.$options;
 
   return {
     connectionType,

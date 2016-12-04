@@ -1,7 +1,8 @@
 {
   "name": "graphql-thinky",
-  "version": "0.3.0",
+  "version": "0.4.0-rc-2",
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
+  "repository": "https://github.com/fenos/graphql-thinky",
   "main": "lib/index.js",
   "scripts": {
     "check": "node_modules/.bin/xo src/*.js src/**/*.js",
@@ -9,12 +10,13 @@
     "build": "rm -rf lib && BABEL_ENV=production babel src -d lib"
   },
   "dependencies": {
+    "dataloader": "^1.2.0",
     "graphql-relay": "^0.4.1",
     "lodash": "^4.0.0",
     "thinky-export-schema": "^2.0.0"
   },
   "devDependencies": {
-    "ava": "^0.14.0",
+    "ava": "^0.17.0",
     "babel": "^6.5.2",
     "babel-cli": "^6.9.0",
     "babel-eslint": "^6.0.3",
@@ -35,12 +37,12 @@
     "xo": "^0.15.1"
   },
   "peerDependencies": {
-    "graphql": "^0.5.0 || ^0.6.0",
+    "graphql": "^0.5.0 || ^0.6.0 || ^0.7.0 || ^0.8.0",
     "thinky": "^2.3.2"
   },
   "ava": {
     "files": [
-      "test/integration/*.js",
+      "test/integration/*.test.js",
       "test/unit/*.js"
     ],
     "failFast": true,
@@ -67,11 +69,24 @@
   "license": "MIT",
   "xo": {
     "esnext": true,
-    "ignore": ["example/**"],
+    "ignore": [
+      "example/**"
+    ],
     "rules": {
-      "xo/filename-case": ["error", {"case": "camelCase"}],
+      "xo/filename-case": [
+        "error",
+        {
+          "case": "camelCase"
+        }
+      ],
       "one-var": 0,
-      "indent": [2, 2, {"SwitchCase": 1}],
+      "indent": [
+        2,
+        2,
+        {
+          "SwitchCase": 1
+        }
+      ],
       "dot-notation": 0
     }
   }

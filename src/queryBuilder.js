@@ -1,5 +1,5 @@
 import thinkySchema from 'thinky-export-schema';
-import _ from 'lodash';
+import {isFunction, uniq, find, isObject} from 'lodash';
 
 /**
  * Args to find options
@@ -9,129 +9,70 @@ import _ from 'lodash';
  * @param opts
  * @returns {{}}
  */
-export function argsToFindOptions(args, model, opts = {maxLimit: 50}) {
+export function argsToFindOptions(args, attributes, model, {maxLimit, requestedFields} = {maxLimit: 50}) {
   const result = {
       filter: {},
+      attributes: [],
       limit: undefined,
       skip: undefined,
-      order: undefined
+      orderBy: undefined
     },
     modelSchema = thinkySchema(model),
-    attributes = Object.keys(modelSchema.fields).concat('id');
-
-  opts.maxLimit = (opts.maxLimit === undefined) ? false : parseInt(opts.maxLimit, 10);
+    modelAttributes = Object.keys(modelSchema.fields).concat('id'),
+    modelRelations = Object.keys(modelSchema.relationships);
 
   if (args) {
     Object.keys(args).forEach(key => {
-      if (attributes.indexOf(key) !== -1) {
+      if (modelAttributes.indexOf(key) !== -1) {
         result.filter = result.filter || {};
         result.filter[key] = args[key];
       }
 
       // Limit arg
-      if (key === 'limit' && args[key]) {
-        result.limit = parseInt(args[key], 10);
+      if (key === 'offset' && args[key]) {
+        result.offset = parseInt(args[key], 10);
       }
 
       if (key === 'skip' && args[key]) {
-        result.skip = parseInt(args[key], 10);
+        result.index = parseInt(args[key], 10);
       }
 
       if (key === 'order' && args[key]) {
         if (args[key].indexOf('reverse:') === 0) {
-          result.order = [args[key].substring(8), 'DESC'];
+          result.orderBy = [args[key].substring(8), 'DESC'];
         } else {
-          result.order = [args[key], 'ASC'];
+          result.orderBy = [args[key], 'ASC'];
         }
       }
     });
 
-    const maxLimit = opts.maxLimit;
+    attributes = Object.keys(attributes).filter(field => {
+      return (modelRelations.indexOf(field) === -1) &&
+        modelSchema.fields.hasOwnProperty(field) &&
+        modelSchema.fields[field] !== 'Virtual';
+    }).concat(['id']);
 
-    if (maxLimit) {
-      if (!result.limit) {
-        result.limit = maxLimit;
+    if (Array.isArray(requestedFields)) {
+      attributes = attributes.concat(requestedFields);
+    }
+
+    result.attributes = uniq(attributes);
+
+    // Set the maxLimit that can be set
+    // for an offset or use that by default
+    // if not explicitly disabled
+    if (maxLimit !== false) {
+      if (!result.offset) {
+        result.offset = maxLimit || 100;
       }
 
-      if (result.limit > maxLimit) {
-        result.limit = maxLimit;
+      if (result.offset > maxLimit) {
+        result.offset = maxLimit;
       }
     }
 
     return result;
   }
-}
-
-/**
- * Resolve join for nested relations
- * recursivily
- *
- * @param thinky
- * @param node
- * @returns {*}
- */
-export function resolveJoin(thinky, node) {
-  if (!node.related) {
-    return;
-  }
-
-  const {model, type} = node.related;
-  const {attributes} = node.args;
-
-  const resolvedAttributes = {};
-  const relationsResolved = {};
-  const modelSchema = thinkySchema(model);
-
-  Object.keys(node.tree).forEach(relatedKey => {
-    const resolvedJoin = resolveJoin( // ** Recursion
-        thinky,
-        node.tree[relatedKey]
-    );
-
-    if (resolvedJoin) {
-      relationsResolved[relatedKey] = resolvedJoin;
-    }
-  });
-
-  attributes.forEach(attribute => {
-    if (!node.tree.hasOwnProperty(attribute)) {
-      resolvedAttributes[attribute] = true;
-    }
-  });
-
-  // Add the id
-  resolvedAttributes.id = true;
-
-  return {
-    _apply: seq => {
-      const findArgs = {
-        ...node.args,
-        attributes
-      };
-
-      const columns = {};
-
-      for (const field in resolvedAttributes) {
-        if (!modelSchema.relationships.hasOwnProperty(field)) {
-          columns[field] = resolvedAttributes[field];
-        }
-      }
-
-      // Special case with belongs to,
-      // we can't chain any sequence, need to open a issue
-      // on thinky ex: pluck can't be chained
-      if (type === 'belongsTo') {
-        findArgs.attributes = false;
-        findArgs.order = false;
-        findArgs.limit = false;
-      } else {
-        findArgs.attributes = columns;
-      }
-
-      return buildQuery(seq, findArgs, thinky);
-    },
-    ...relationsResolved
-  };
 }
 
 /**
@@ -144,24 +85,28 @@ export function resolveJoin(thinky, node) {
  * @returns {*}
  */
 export function buildQuery(seq, args, thinky) {
-  args.relations = args.relations || {};
   let Query = seq;
 
   // Developer can overwrite query per node
   if (typeof args.query === 'function') {
     Query = args.query(seq, args, thinky);
   } else {
-    // If "query" arg is not given, then
-    // we run the default query composition
-    if (_.isArray(args.attributes)) {
-      Query = seq.withFields(args.attributes);
-    } else if (_.isObject(args.attributes)) {
-      Query = seq.withFields(args.attributes);
+    // NOTE: selecting only necessary fields will gather a bit of performance
+    // through your queries, BUT the drawback is that we might
+    // add another DB query for sub-sequentials GraphQL requests
+    // when asking for the the same resource. We can't gurantee all the fields
+    // are available so we don't use Dataloader cache to return the results
+    if (args.requestedFields) {
+      if (Array.isArray(args.attributes)) {
+        Query = seq.withFields(args.attributes);
+      } else if (isObject(args.attributes)) {
+        Query = seq.withFields(args.attributes);
+      }
     }
 
-    if (args.filter && Object.keys(args.filter).length > 0) {
+    if (args.filter && args.filterQuery && Object.keys(args.filter).length > 0) {
       Object.keys(args.filter).forEach(fieldName => {
-        if (_.isFunction(args.filter[fieldName])) {
+        if (isFunction(args.filter[fieldName])) {
           Query = Query.filter(args.filter[fieldName]);
           delete args.filter[fieldName];
         }
@@ -170,50 +115,68 @@ export function buildQuery(seq, args, thinky) {
       Query = Query.filter(args.filter);
     }
 
-    if (args.count) {
-      const countQuery = Query.merge(() => {
-        return {
-          fullCount: Query._query.count()
-        };
-      });
-
-      Query = countQuery;
-    }
-
-    if (args.order && args.order[1] === 'DESC') {
-      Query = Query.orderBy(thinky.r.desc((args.order[0])));
-    } else if (args.order && args.order[0]) {
-      Query = Query.orderBy(args.order[0]);
+    if (args.orderBy && args.orderBy[1] === 'DESC') {
+      Query = Query.orderBy(thinky.r.desc((args.orderBy[0])));
+    } else if (args.orderBy && args.orderBy[0]) {
+      Query = Query.orderBy(args.orderBy[0]);
     }
 
     if (args.offset) {
-      Query = Query.skip(parseInt(args.offset, 10));
+      Query = Query.slice(args.index, args.offset);
     }
-
-    if (args.limit) {
-      Query = Query.limit(parseInt(args.limit, 10));
-    }
-  }
-
-  const joinRelations = {};
-
-  // Compose the object which will join
-  // the results, recursively
-  Object.keys(args.relations).forEach(relation => {
-    // Extract requested fields for the nested relation
-    const resolvedJoin = resolveJoin(
-        thinky,
-        args.relations[relation]
-    );
-
-    if (resolvedJoin) {
-      joinRelations[relation] = resolvedJoin;
-    }
-  });
-
-  if (Object.keys(joinRelations).length > 0) {
-    Query = Query.getJoin(joinRelations);
   }
 
   return Query;
+}
+
+/**
+ * Build Count
+ * @param model
+ * @param relatedIds
+ * @param FK
+ * @param opts
+ * @returns {*|void|Promise}
+ */
+export function buildCount(model, relatedIds, FK, opts) {
+  const thinky = model._thinky;
+  const r = thinky.r;
+  opts.offset = false;
+  opts.orderBy = false;
+
+  if (relatedIds.length > 0 && FK) {
+    let seq = model.getAll(r.args(uniq(relatedIds)), {index: FK})
+      .withFields(['id', FK].concat(Object.keys(opts.filter)));
+
+    seq = buildQuery(seq, opts, thinky);
+
+    return seq.group(FK).ungroup().merge(selectionSet => {
+      return {fullCount: selectionSet('reduction').count()};
+    }).run();
+  }
+
+  const seq = buildQuery(model, opts, thinky);
+
+  return seq.count().execute();
+}
+
+/**
+ * Map count to result set
+ * @param resultSet
+ * @param countResults
+ * @param FK
+ * @returns {*}
+ */
+export function mapCountToResultSet(resultSet, countResults, FK) {
+  return resultSet.map(row => {
+    if (Array.isArray(row)) {
+      return row.map(innerRow => {
+        const findCount = find(countResults, {group: innerRow[FK]}) || {fullCount: 0};
+        innerRow.fullCount = findCount.fullCount;
+        return innerRow;
+      });
+    }
+    const findCount = find(countResults, {group: row[FK]}) || {fullCount: 0};
+    row.fullCount = findCount.fullCount;
+    return row;
+  });
 }
