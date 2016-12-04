@@ -1,6 +1,6 @@
 import Dataloader from 'dataloader';
-import { find, uniq, maxBy, groupBy, flatten } from 'lodash';
-import {buildQuery,buildCount,mapCountToResultSet} from '../queryBuilder';
+import {find, uniq, maxBy, flatten} from 'lodash';
+import {buildQuery, buildCount, mapCountToResultSet} from '../queryBuilder';
 import LoaderFilter from './loaderFilter';
 
 /**
@@ -61,9 +61,9 @@ class ModelLoader {
       relationName,
       this._queryRelations(relationName, 'id', filterOpt),
     ).load(FKID).then(results => {
-      return new LoaderFilter(results,options);
+      return new LoaderFilter(results, options);
     });
-  };
+  }
 
   /**
    * Related by field name
@@ -86,7 +86,7 @@ class ModelLoader {
       relationName,
       this._queryRelations(relationName, fieldName)
     ).load(FKID).then(results => {
-      return new LoaderFilter(results,options);
+      return new LoaderFilter(results, options);
     });
   }
 
@@ -121,7 +121,7 @@ class ModelLoader {
    * @returns {*}
    * @private
    */
-  _queryLoaderIdFromParams({filterQuery,filter,attributes,requestedFields, ...rest}) {
+  _queryLoaderIdFromParams({filterQuery, filter, attributes, requestedFields, ...rest}) {
     if (filterQuery) {
       // If the filterQuery flag is enabled
       // then i let the filters included
@@ -143,7 +143,7 @@ class ModelLoader {
     .reduce((obj, objKey) => {
       obj[objKey] = rest[objKey];
       return obj;
-    },{});
+    }, {});
   }
 
   /**
@@ -153,12 +153,11 @@ class ModelLoader {
    * @private
    */
   async _queryRelationLoader(queryParams) {
-
     return queryParams.map(params => {
       const same = queryParams.filter(qp => {
         return (
-          JSON.stringify(params.filter) == JSON.stringify(qp.filter) &&
-          params.index == qp.index
+          JSON.stringify(params.filter) === JSON.stringify(qp.filter) &&
+          params.index === qp.index
         );
       });
 
@@ -199,11 +198,11 @@ class ModelLoader {
     return async FkIds => {
       const thinky = this.model._thinky;
       const r = thinky.r;
-      const query = this.model.getAll(r.args(uniq(FkIds)), { index: fieldName })
+      const query = this.model.getAll(r.args(uniq(FkIds)), {index: fieldName})
         .withFields(fieldName).getJoin({
           [relationName]: {
             _apply(seq) {
-              return buildQuery(seq,nodeAttributes,thinky);
+              return buildQuery(seq, nodeAttributes, thinky);
             }
           }
         });
@@ -221,7 +220,7 @@ class ModelLoader {
           nodeAttributes,
         );
 
-        return mapCountToResultSet(resultSet,countResults,FK);
+        return mapCountToResultSet(resultSet, countResults, FK);
       }
 
       return resultSet;
@@ -236,11 +235,11 @@ class ModelLoader {
    * @returns {*|void|Promise}
    * @private
    */
-  _countRelated(relatedIds,relationName,opts) {
+  _countRelated(relatedIds, relationName, opts) {
     const relation = this.model._joins[relationName];
     const FK = relation.rightKey;
 
-    return buildCount(relation.model,relatedIds,FK,opts);
+    return buildCount(relation.model, relatedIds, FK, opts);
   }
 
   /**
@@ -254,7 +253,7 @@ class ModelLoader {
    */
   _mapResults(ids, results, fieldName, relationName) {
     return ids.map(fkId => {
-      const resultMatch = find(results, { [fieldName]: fkId });
+      const resultMatch = find(results, {[fieldName]: fkId});
       if (resultMatch) {
         if (relationName) {
           return resultMatch[relationName];

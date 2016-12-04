@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {buildQuery,buildCount} from './queryBuilder';
+import {buildQuery, buildCount} from './queryBuilder';
 import {resolveConnection} from './relay';
 
 /**
@@ -7,7 +7,7 @@ import {resolveConnection} from './relay';
  */
 class Node {
 
-  constructor({ model, related = undefined, args = {}, connection = {}, name = '', query = undefined, loadersKey = 'loaders'}) {
+  constructor({model, related = undefined, args = {}, connection = {}, name = '', query = undefined, loadersKey = 'loaders'}) {
     assert(model, 'You need to provide a thinky Model');
 
     this.model = model;
@@ -40,7 +40,7 @@ class Node {
       if (loaders && !this.args.requestedFields) {
         queryResult.forEach(row => {
           loaders[this.getModelName()].getOrCreateLoader('loadBy', 'id')
-            .prime(row.id,row);
+            .prime(row.id, row);
         });
       }
 
@@ -60,7 +60,7 @@ class Node {
     } else {
       const Query = buildQuery(this.model, {
         ...this.args,
-        offset: false,
+        offset: false
       }, this.model._thinky);
       queryResult = await Query.nth(0).default(null).run();
     }
@@ -89,7 +89,7 @@ class Node {
     if (!this.connection.type) throw new Error("Please specify a connection type, before call connect on a Node");
     /*eslint-enable */
 
-    return resolveConnection(this,resolveOptions);
+    return resolveConnection(this, resolveOptions);
   }
 
   /**
@@ -159,9 +159,8 @@ class Node {
 
     if (this.args.list) {
       return result.toArray();
-    } else {
-      return result.toObject(this.args);
     }
+    return result.toObject(this.args);
   }
 
   /**
@@ -170,7 +169,7 @@ class Node {
    * @param args
    */
   appendArgs(args) {
-    this.args = { ...this.args, ...args };
+    this.args = {...this.args, ...args};
   }
 
   /**

@@ -1,4 +1,4 @@
-import {uniq, extend} from 'lodash';
+import {extend} from 'lodash';
 import {GraphQLList, GraphQLNonNull} from 'graphql';
 import simplifyAST from './simplifyAst';
 import {argsToFindOptions} from './queryBuilder';
@@ -17,7 +17,6 @@ function _isList(gqlTye) {
 
   if (gqlTye instanceof GraphQLNonNull) {
     return _isList(gqlTye.ofType);
-    return true;
   }
 
   return false;
@@ -49,7 +48,6 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
    * @constructor
    */
   const Resolver = async(source, args, context, info) => {
-
     Node.name = Node.name || info.fieldName;
 
     let simplyAST = simplifyAST(info.fieldASTs[0], info);
@@ -63,7 +61,7 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
       type = nodeType(type);
     }
 
-    const findOptions = argsToFindOptions(args,requestedFields, Model, opts);
+    const findOptions = argsToFindOptions(args, requestedFields, Model, opts);
 
     let nodeAttributes = extend({
       list: connection || _isList(type),
@@ -77,11 +75,11 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
       orderBy: undefined,
       count: undefined,
       ...findOptions
-    },opts);
+    }, opts);
 
     // Before Resolve is triggered, good for permission checks
     // and manipulating query exec
-    nodeAttributes = await before(nodeAttributes,source, args, context, {
+    nodeAttributes = await before(nodeAttributes, source, args, context, {
       ...info,
       ast: simplyAST,
       type,
@@ -91,9 +89,9 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
     type = type.ofType || type;
     Node.appendArgs(nodeAttributes);
 
-    const result = await Node.resolve(source,context || {});
+    const result = await Node.resolve(source, context || {});
 
-    return await after(result,nodeAttributes,source, args, context, {
+    return await after(result, nodeAttributes, source, args, context, {
       ...info,
       ast: simplyAST,
       type,

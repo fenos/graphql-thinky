@@ -50,11 +50,11 @@ function fromCursor(cursor) {
  */
 function resolveEdge(item, index, queriedCursor, args = {}, source) {
   if (queriedCursor) {
-    index = parseInt(queriedCursor.index,10) + index ;
+    index = parseInt(queriedCursor.index, 10) + index;
     if (index === 0) {
       index = 1;
     } else {
-      index = index + 1;
+      index++;
     }
   }
   return {
@@ -105,7 +105,7 @@ function createEdgeInfo(resultset, offset, index) {
  * @param Node
  * @returns {{connectionType, edgeType, nodeType: *, resolveEdge: resolveEdge, connectionArgs: {orderBy: {type}}, resolve: resolver}}
  */
-export default (Node,resolveOpts) => {
+export default (Node, resolveOpts) => {
   const connectionOpts = Node.connection,
     connectionName = connectionOpts.name,
     nodeType = connectionOpts.type,
@@ -155,7 +155,7 @@ export default (Node,resolveOpts) => {
     list: true,
     handleConnection: false,
     thinky: Node.thinky,
-    before: (options,parent, args, context) => {
+    before: (options, parent, args, context) => {
       if (args.first || args.last) {
         const offset = parseInt(args.first || args.last, 10);
 
@@ -165,16 +165,14 @@ export default (Node,resolveOpts) => {
 
         if (args.before || args.after) {
           const cursor = fromCursor(args.after || args.before);
-          const startIndex = parseInt(cursor.index,10);
+          const startIndex = parseInt(cursor.index, 10);
           options.offset = offset + startIndex;
           options.index = startIndex;
-
         } else {
           options.offset = offset;
           options.index = 0;
         }
       }
-
 
       // attach the order into the composition
       // stack
@@ -203,8 +201,7 @@ export default (Node,resolveOpts) => {
 
       return connectionOpts.before(options, args, root, context);
     },
-    after: (resultset,{offset, index}, parent, args, root, {source}) => {
-
+    after: (resultset, {offset, index}, parent, args, root, {source}) => {
       let cursor = null;
 
       // Once we have the result set we decode the cursor

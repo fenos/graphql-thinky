@@ -1,19 +1,17 @@
-import { chain, isObject } from 'lodash';
+import {chain, isObject} from 'lodash';
 import {
   connectionFromArray
 } from 'graphql-relay';
-import { NodeAttributes } from './../node';
 
 class LoaderFilter {
 
   constructor(results, filtering = {}) {
-
     this.results = results;
     this.filtering = {
       limit: 40,
       orderBy: {},
       filter: {},
-      ...filtering || {},
+      ...filtering || {}
     };
   }
 
@@ -26,7 +24,7 @@ class LoaderFilter {
       return result[0] || {};
     }
 
-    throw new Error("Couldn't transform result to Object");
+    throw new Error('Couldn\'t transform result to Object');
   }
 
   /**
@@ -36,12 +34,12 @@ class LoaderFilter {
    */
   toArray() {
     let results;
-    if (!Array.isArray(this.results)) {
+    if (!Array.isArray(this.results)) { // eslint-disable-line no-negated-condition
       results = [this.results];
     } else {
       results = this.results;
     }
-    const { index, offset, orderBy, filter } = this.filtering;
+    const {index, offset, orderBy, filter} = this.filtering;
     let resultFiltered = chain(results);
 
     if (orderBy && Object.keys(orderBy).length > 0) {

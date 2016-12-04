@@ -1,15 +1,15 @@
-import { connectionDefinitions, connectionArgs } from 'graphql-relay';
+import {connectionDefinitions, connectionArgs} from 'graphql-relay';
 import resolver from './resolver';
 import typeMapper, {toGraphQLDefinition} from './typeMapper';
 import ModelLoader from './dataloader/modelLoader';
 import LoaderFiler from './dataloader/loaderFilter';
-import { nodeInterfaceMapper } from './relay/nodeDefinition';
+import {nodeInterfaceMapper} from './relay/nodeDefinition';
 import modelToGQLObjectType from './modelToGqlObjectType';
 import Node from './node';
 import commonArgs from './commonArgs';
 
 const defaultOptions = {
-  maxLimit: 50,
+  maxLimit: 50
 };
 
 /**
@@ -64,7 +64,7 @@ class GraphqlThinky {
    */
   resolve = (modelName, related, opts = {}) => {
     const Node = this.node(modelName, related);
-    return resolver(Node, { ...this.options, ...opts });
+    return resolver(Node, {...this.options, ...opts});
   };
 
   /**
@@ -75,7 +75,7 @@ class GraphqlThinky {
    * @param opts
    * @returns {Resolver}
    */
-  connect = (modelName, related, {connection,args, ...opts} = {}) => {
+  connect = (modelName, related, {connection, args, ...opts} = {}) => {
     /*eslint-disable */
     if (!connection) throw Error('Please provide a connection option.');
     if (!connection.name) throw Error(`Please provide a name for the connection based on Model: ${modelName}.`);
@@ -84,7 +84,7 @@ class GraphqlThinky {
 
     const NodeConnector = this.node(modelName, related, {
       ...opts,
-      connection,
+      connection
     }).connect({...this.options, ...opts});
 
     return {
@@ -108,7 +108,7 @@ class GraphqlThinky {
    * @returns {{type, args: {}}}
    */
   connectTypeDefinition = (gqlType, args) => {
-    const { connectionType } = connectionDefinitions({ nodeType: gqlType });
+    const {connectionType} = connectionDefinitions({nodeType: gqlType});
     return {
       type: connectionType,
       args: {
@@ -118,7 +118,7 @@ class GraphqlThinky {
     };
   }
 
-  shape = (result) => {
+  shape = result => {
     return new LoaderFiler(result);
   }
 

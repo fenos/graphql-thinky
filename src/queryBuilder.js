@@ -1,6 +1,5 @@
 import thinkySchema from 'thinky-export-schema';
-import {NodeAttributes} from './node';
-import {isFunction,uniq,find,isObject} from 'lodash';
+import {isFunction, uniq, find, isObject} from 'lodash';
 
 /**
  * Args to find options
@@ -10,7 +9,7 @@ import {isFunction,uniq,find,isObject} from 'lodash';
  * @param opts
  * @returns {{}}
  */
-export function argsToFindOptions(args,attributes, model, {maxLimit, requestedFields} = {maxLimit: 50}) {
+export function argsToFindOptions(args, attributes, model, {maxLimit, requestedFields} = {maxLimit: 50}) {
   const result = {
       filter: {},
       attributes: [],
@@ -92,7 +91,6 @@ export function buildQuery(seq, args, thinky) {
   if (typeof args.query === 'function') {
     Query = args.query(seq, args, thinky);
   } else {
-
     // NOTE: selecting only necessary fields will gather a bit of performance
     // through your queries, BUT the drawback is that we might
     // add another DB query for sub-sequentials GraphQL requests
@@ -107,7 +105,6 @@ export function buildQuery(seq, args, thinky) {
     }
 
     if (args.filter && args.filterQuery && Object.keys(args.filter).length > 0) {
-
       Object.keys(args.filter).forEach(fieldName => {
         if (isFunction(args.filter[fieldName])) {
           Query = Query.filter(args.filter[fieldName]);
@@ -140,24 +137,24 @@ export function buildQuery(seq, args, thinky) {
  * @param opts
  * @returns {*|void|Promise}
  */
-export function buildCount(model,relatedIds,FK,opts) {
+export function buildCount(model, relatedIds, FK, opts) {
   const thinky = model._thinky;
   const r = thinky.r;
   opts.offset = false;
   opts.orderBy = false;
 
   if (relatedIds.length > 0 && FK) {
-    let seq = model.getAll(r.args(uniq(relatedIds)),{index: FK})
-      .withFields(['id',FK].concat(Object.keys(opts.filter)));
+    let seq = model.getAll(r.args(uniq(relatedIds)), {index: FK})
+      .withFields(['id', FK].concat(Object.keys(opts.filter)));
 
-    seq = buildQuery(seq,opts,thinky);
+    seq = buildQuery(seq, opts, thinky);
 
-    return seq.group(FK).ungroup().merge(function(selectionSet) {
-      return {fullCount: selectionSet('reduction').count()}
+    return seq.group(FK).ungroup().merge(selectionSet => {
+      return {fullCount: selectionSet('reduction').count()};
     }).run();
   }
 
-  const seq = buildQuery(model,opts,thinky);
+  const seq = buildQuery(model, opts, thinky);
 
   return seq.count().execute();
 }
@@ -169,18 +166,17 @@ export function buildCount(model,relatedIds,FK,opts) {
  * @param FK
  * @returns {*}
  */
-export function mapCountToResultSet(resultSet,countResults,FK) {
+export function mapCountToResultSet(resultSet, countResults, FK) {
   return resultSet.map(row => {
     if (Array.isArray(row)) {
       return row.map(innerRow => {
-        const findCount = find(countResults,{group: innerRow[FK]}) || {fullCount: 0};
+        const findCount = find(countResults, {group: innerRow[FK]}) || {fullCount: 0};
         innerRow.fullCount = findCount.fullCount;
         return innerRow;
       });
-    } else {
-      const findCount = find(countResults,{group: row[FK]}) || {fullCount: 0};
-      row.fullCount = findCount.fullCount;
-      return row;
     }
+    const findCount = find(countResults, {group: row[FK]}) || {fullCount: 0};
+    row.fullCount = findCount.fullCount;
+    return row;
   });
 }
