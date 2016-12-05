@@ -11,7 +11,9 @@ export default {
     args: {
       ...commonArgs,
     },
-    resolve: resolve('post'),
+    resolve: (parent, args, context, info) => {
+      return resolve('post')(parent, args, context, info);
+    },
   },
 
   postsConnection: {

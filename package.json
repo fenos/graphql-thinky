@@ -1,6 +1,6 @@
 {
   "name": "graphql-thinky",
-  "version": "0.4.0-rc-2",
+  "version": "0.4.0-rc-3",
   "description": "GraphQL & Relay powered by thinky / RethinkDB",
   "repository": "https://github.com/fenos/graphql-thinky",
   "main": "lib/index.js",
@@ -28,7 +28,7 @@
     "chai": "^3.0.0",
     "chai-as-promised": "^5.1.0",
     "eslint": "^1.7.3",
-    "graphql": "^0.5.0",
+    "graphql": "^0.8.0",
     "nyc": "^6.4.4",
     "sinon": "^1.15.4",
     "sinon-as-promised": "^4.0.0",
@@ -37,7 +37,7 @@
     "xo": "^0.15.1"
   },
   "peerDependencies": {
-    "graphql": "^0.5.0 || ^0.6.0 || ^0.7.0 || ^0.8.0",
+    "graphql": "^0.8.0",
     "thinky": "^2.3.2"
   },
   "ava": {

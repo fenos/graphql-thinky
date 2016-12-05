@@ -50,7 +50,7 @@ export default function resolver(Node, {before, after, ...opts} = {}) {
   const Resolver = async(source, args, context, info) => {
     Node.name = Node.name || info.fieldName;
 
-    let simplyAST = simplifyAST(info.fieldASTs[0], info);
+    let simplyAST = simplifyAST(info.fieldNodes[0], info);
     let requestedFields = simplyAST.fields;
     let type = info.returnType;
 
